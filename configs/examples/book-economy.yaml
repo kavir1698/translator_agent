@@ -1,0 +1,11 @@
+# Economy example: a tighter per-book budget and the cheapest translation mode.
+# Copy to books/<slug>/config.yaml. It overrides only the keys it sets.
+pipeline:
+  cost_mode: economy            # draft + fidelity critic + lint
+
+budget:
+  max_usd: 3                    # pause (exit 3) at $3 instead of the $10 default
+  warn_at_fraction: 0.8
+
+export:
+  formats: [epub, md]

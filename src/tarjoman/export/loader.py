@@ -10,7 +10,7 @@ from typing import Any
 
 from tarjoman.core.config import Settings
 from tarjoman.core.db import Database
-from tarjoman.core.errors import ConfigError, RuntimeFailure
+from tarjoman.core.errors import ConfigError, IncompleteError
 from tarjoman.core.ids import utc_now_iso
 from tarjoman.core.paths import find_book_dir
 
@@ -228,7 +228,7 @@ def load_export_book(
 
         if (incomplete or open_errors) and not allow_incomplete:
             example_ids = ", ".join(missing[:_EXAMPLES]) if missing else "none"
-            raise RuntimeFailure(
+            raise IncompleteError(
                 "export blocked: "
                 f"{len(missing)} of {body_segments} body segment(s) are not done or lack a "
                 f"current Persian translation, coverage is {coverage:.1%} "

@@ -10,6 +10,7 @@ from tarjoman.core.logging import configure_logging
 
 from . import (
     analyze_cmd,
+    audit_cmd,
     doctor_cmd,
     estimate_cmd,
     export_cmd,
@@ -52,6 +53,7 @@ app.command("inspect")(inspect_cmd.inspect)
 app.command("analyze")(analyze_cmd.analyze)
 app.command("translate")(translate_cmd.translate)
 app.command("retranslate")(retranslate_cmd.retranslate)
+app.command("audit")(audit_cmd.audit)
 app.command("export")(export_cmd.export)
 app.add_typer(glossary_app, name="glossary")
 app.add_typer(qa_app, name="qa")

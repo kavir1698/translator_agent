@@ -1,6 +1,6 @@
 [project]
 name = "tarjoman"
-version = "0.1.0"
+version = "1.0.0"
 description = "Agentic English to Persian literary translator for a personal library"
 readme = "README.md"
 requires-python = ">=3.12"

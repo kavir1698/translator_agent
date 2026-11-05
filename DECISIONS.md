@@ -62,7 +62,7 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M4: Cross-turn issue hygiene: `upsert_issue` reopens a resolved issue but never clears a human waiver; lint issues are reconciled (resolved) when the current translation no longer reproduces them; window-scope issues are reconciled per window; critique issues are resolved when an accepted revision/repair applies them.
 - M4: `--no-cache` bypasses reads but still writes; `--refresh` deletes this book's cache rows first. A rerun with nothing to translate makes no calls and reports a 100% cache-hit rate.
 - M4: Prompt templates now wrap optional blocks in Jinja conditionals so an empty glossary/cast/anchor block leaves no empty heading for the model to fill.
-- M4: No real-provider smoke run was performed in this environment (no API key); the mock-provider acceptance run is the recorded evidence.
+- M4: No real-provider smoke run was performed in this environment; the mock-provider acceptance run is the recorded evidence.
 ## M4.5 — anchor calibration
 - M4.5: `tj anchors propose` selects up to 3 deterministic pairs from the first body chapter (longest non-dialogue prose, highest dialogue ratio, most inline emphasis; tie-break by segment id). Approval requires 2–3 pairs and records `anchors_hash` in `books.metadata_json` and the run artifact hashes.
 - M4.5: Missing anchors only warn when the selected scope includes chapter 2+; `--require-anchors` turns that into a configuration error. `--no-anchors` skips them entirely; combining the two flags is a usage error.
@@ -100,6 +100,15 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M8b: Bilingual HTML is one self-contained file (inline CSS/JS, no `http(s)` resources, no script `src`) with `dir="rtl" lang="fa"`, per-chapter sections, two-cell `source | translation` rows carrying `dir="ltr" lang="en"` / `dir="rtl"`, issue badges from `segment.issues`, and text/chapter/only-with-issues filters plus arrow-key navigation. `export.bilingual_html.include_source: false` omits the source column.
 - M8b: `docx` is now a normal format and the default format list continues to come from `settings.export.formats`; the M8a placeholder warning/error is removed.
 
+## M9 — audit and read-through
+- M9: `--sample` windows are chosen at evenly spaced indexes across `plan_windows`; each `[segment]\nEN/FA` pair is capped at ~1,500 characters so the A10 prompt stays bounded.
+- M9: A10 findings with a segment id outside the book become chapter-scope findings; A10 `ledger_corrections` persist as chapter-scope `LEDGER_CORRECTION` warns and the verdict is kept in run stats.
+- M9: The deterministic name audit marks a variant `error` only when the approved form never appears in that chapter but does appear in another; otherwise `warn`. Ratios 88–93.9 set `ambiguous: true` / `needs_adjudication: true` and stay `warn` for human review rather than entering the automatic repair queue; no extra LLM call is added (A10 sees the same ledger/glossary in its normal pass). A missing character/place name is a `warn` (Persian drops repeated subjects), while a missing term/unit is an `error` and enters the repair queue.
+- M9: A11 never creates a translation version; read-through issues are evidence only and are explicitly excluded from the repair queue.
+- M9: Repairs consume only open `stage='audit'` error/critical findings with a real segment id, skip current `human` versions and byte-identical output, and reject empty output, new markup problems or extra lint errors.
+- M9: Adherence % is the share of audited chapters with no open `error`/`critical` issue from `audit`/`readthrough`; it is not a translation-quality score.
+- M9: `--readthrough/--no-readthrough` is tri-state; when omitted the setting `pipeline.passes.readthrough` decides.
+
 ## Post-review hardening (M7/M8)
 - Review state: `run_qa` now accepts `QaOptions.preserve_flags`; review build/apply use it. Existing `reviewed`/`reviewer_note` values are merged by segment id, out-of-scope rows are retained, and `flags.csv` is replaced atomically (temp + replace). `corrections` reuses the shared `FLAGS_COLUMNS`/`build_flag_row` instead of duplicating the schema.
 - Corrections: payloads now carry `translation_version`; review stores it on each report row and `tj review apply` refuses a stale version unless `--force` is passed. Reviewer notes are CSV-formula-neutralized. The review report is written atomically.
@@ -108,3 +117,14 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - Bidi source sanitization keeps heading/verse/table/footnote structure; chapter endnotes remain per-chapter.
 - `books.title_fa`/`book.title_fa` is now honored for `dc:title` and DOCX core properties; export warns when it is unset instead of silently claiming an all-Persian title.
 - Performance: export loading batches segments/current translations/issues, review loading batches translations/issues and reuses the glossary-match map, and each segment HTML fragment is parsed once during rendering. EPUB validation still re-reads the finished archive by design (archive integrity), and DOCX deterministic rewriting streams one entry at a time.
+
+## M11 — polish and release
+- M11: Version is `1.0.0` in `pyproject.toml` and `tarjoman.__version__`. Creating the git tag `v1.0.0` is a release step; no tag or commit is created by the M11 working-tree change.
+- M11: README is a user guide, not a build handoff. The tutorial order is install → init → optional analyze/approve → translate → audit → optional review → export; the zero-config path is `init → translate → export`, with `tj analyze` documented as optional because translate otherwise uses the built-in default brief and marks the run experimental.
+- M11: The command reference is generated from the real typer surface. `tj eval` is absent and the README states that the M10 evaluation harness/bake-off is deferred. `tj translate --review-brief` is documented as a no-op warning; the real manual brief gate is `tj analyze --review-brief` followed by `tj analyze --approve`.
+- M11: `tj doctor` adds package version, required-package imports/versions (`python-docx`, `pypdfium2`, `litellm`), a writable/created `books` directory, bundled export-font presence, and workspace checks (`PRAGMA quick_check`, schema version, book/chapter/segment counts, optional artifacts). Missing `brief.yaml`/`glossary.yaml` are informational; missing anchors are a warning only when the workspace has 2+ chapters. Every new check is offline; warnings still exit 0 and the `{"checks", "failed"}` JSON shape is unchanged.
+- M11: The export completeness gate raises `IncompleteError` (`RuntimeFailure` subclass) so export exits 4, matching the documented exit-code contract; `IncompleteError` previously existed but was unused and not a `RuntimeFailure`.
+- M11: `configs/sample.book.yaml` is a fully commented, valid per-book override covering every `Settings` section; two minimal examples add an economy budget and auto-glossary mode. No new config keys were introduced.
+- M11: CI is GitHub Actions on `ubuntu-latest` with `astral-sh/setup-uv`, `uv sync --frozen --dev`, `ruff check`, `mypy`, and `pytest -q -m "not online"`; a dependent job runs `uv build`. CI uses no secrets and makes no provider calls; online tests remain opt-in.
+- M11: **No real-provider or public-domain-novella run was performed here**; network and real-key execution were out of scope for this build (key presence is checked only, never printed). The acceptance evidence is the offline mock-provider suite (`tests/integration/test_tutorial_e2e.py` covers both EPUB and text-layer PDF), not a real literary-quality or cost claim. The fixture generator's text is synthetic, not a public-domain novella.
+- M11: M10 is deliberately skipped and no `tj eval` command was added; mechanical QA (linters, audit/read-through) is the shipped quality tooling.

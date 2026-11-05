@@ -129,9 +129,13 @@ class SmartProvider:
         *,
         mode: str = "clean",
         fail_segment: str | None = None,
+        audit_findings: list[dict[str, Any]] | None = None,
+        readthrough_issues: list[dict[str, Any]] | None = None,
     ) -> None:
         self.mode = mode
         self.fail_segment = fail_segment
+        self.audit_findings = audit_findings or []
+        self.readthrough_issues = readthrough_issues or []
         self.calls: list[dict[str, Any]] = []
         self._critique_calls = 0
 
@@ -165,6 +169,24 @@ class SmartProvider:
             )
         if "You are revising a Persian literary translation" in content:
             return self._revise(content, messages)
+        if "Audit one chapter of a Persian translation" in content:
+            return _result(
+                {
+                    "findings": self.audit_findings,
+                    "ledger_corrections": [],
+                    "verdict": "inconsistent" if self.audit_findings else "consistent",
+                },
+                messages,
+            )
+        if "You are a Persian literary critic reading a translated chapter" in content:
+            return _result(
+                {
+                    "issues": self.readthrough_issues[:5],
+                    "voice_verdict": "consistent",
+                    "chapter_impression": "The chapter reads cleanly in Persian.",
+                },
+                messages,
+            )
         if "Maintain the continuity ledger" in content:
             return _result(
                 {

@@ -41,7 +41,9 @@ class BudgetPaused(TarjomanError):
     exit_code = EXIT_PAUSED
 
 
-class IncompleteError(TarjomanError):
+class IncompleteError(RuntimeFailure):
+    """Finished with unresolved error issues or incomplete coverage (exit 4)."""
+
     exit_code = EXIT_INCOMPLETE
 
 

@@ -2,29 +2,50 @@
 
 from __future__ import annotations
 
+import importlib
+import importlib.metadata
 import json
 import shutil
 import sqlite3
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from uuid import uuid4
 
 import typer
 from rich.table import Table
 
+import tarjoman
 from tarjoman.core.config import Settings, api_key_for
 from tarjoman.core.cost import ModelProfile
+from tarjoman.core.db import SCHEMA_VERSION
 from tarjoman.core.errors import TarjomanError
-from tarjoman.core.paths import book_dir
+from tarjoman.core.paths import book_dir, books_dir
 from tarjoman.llm.promptlib import PROMPTS_DIR, load_all
 
 from .common import load_context
 from .ui import console, handle_errors
 
 OK = "ok"
+INFO = "info"
 WARN = "warn"
 FAIL = "fail"
-_SYMBOL = {OK: "[green]ok[/green]", WARN: "[yellow]warn[/yellow]", FAIL: "[red]fail[/red]"}
+_SYMBOL = {
+    OK: "[green]ok[/green]",
+    INFO: "[blue]info[/blue]",
+    WARN: "[yellow]warn[/yellow]",
+    FAIL: "[red]fail[/red]",
+}
+_REQUIRED_PACKAGES = (
+    ("python-docx", "docx"),
+    ("pypdfium2", "pypdfium2"),
+    ("litellm", "litellm"),
+)
+_EXPORT_ASSETS = (
+    "Vazirmatn-Regular.woff2",
+    "Vazirmatn-Bold.woff2",
+    "OFL.txt",
+)
 
 
 @dataclass
@@ -47,11 +68,18 @@ def doctor(
 
     py_ok = sys.version_info >= (3, 12)
     checks.append(Check("python", OK if py_ok else FAIL, sys.version.split()[0]))
+    checks.append(Check("package", OK, f"tarjoman {tarjoman.__version__}"))
 
     checks.append(Check("sqlite", OK, sqlite3.sqlite_version))
     try:
         disk = shutil.disk_usage(Path.cwd())
-        checks.append(Check("disk_free", OK if disk.free > 1_000_000_000 else WARN, f"{disk.free / 1e9:.1f} GB"))
+        checks.append(
+            Check(
+                "disk_free",
+                OK if disk.free > 1_000_000_000 else WARN,
+                f"{disk.free / 1e9:.1f} GB",
+            )
+        )
     except OSError as exc:
         checks.append(Check("disk_free", WARN, str(exc)))
 
@@ -64,8 +92,13 @@ def doctor(
 
     settings = context.settings
     checks.append(Check("config", OK, f"{len(settings.model_dump())} sections valid"))
-    checks.append(Check("profile", OK, f"{context.profile.provider} ({', '.join(context.profile.tiers)})"))
+    checks.append(
+        Check("profile", OK, f"{context.profile.provider} ({', '.join(context.profile.tiers)})")
+    )
     checks.append(Check("thinking", OK, settings.provider.thinking))
+    checks.extend(_package_checks())
+    checks.extend(_books_dir_checks(settings, context.root))
+    checks.extend(_asset_checks())
 
     prompt_error = None
     try:
@@ -114,22 +147,167 @@ def doctor(
         binary = shutil.which("epubcheck")
         checks.append(Check("epubcheck", OK if binary else WARN, binary or "not found (optional)"))
         soffice = shutil.which("soffice")
-        checks.append(Check("libreoffice", OK if soffice else WARN, soffice or "not found (PDF export only)"))
+        checks.append(
+            Check("libreoffice", OK if soffice else WARN, soffice or "not found (PDF export only)")
+        )
 
     book_path = (
         book_dir(context.slug, context.root, settings.project.books_dir) if context.slug else None
     )
-    if book_path and (book_path / "book.db").exists():
-        from tarjoman.core.db import Database
-
-        with Database(book_path / "book.db") as db:
-            book = db.get_book(context.slug or "")
-            if book is not None:
-                checks.append(Check("provenance", OK, f"rights_basis={book['rights_basis']}"))
+    if book_path is not None and (book_path / "book.db").exists():
+        checks.extend(_workspace_checks(book_path, context.slug or ""))
 
     failed = _render(checks, json_out)
     if failed:
         raise typer.Exit(2)
+
+
+def _package_checks() -> list[Check]:
+    checks: list[Check] = []
+    for distribution, module in _REQUIRED_PACKAGES:
+        try:
+            importlib.import_module(module)
+            version = importlib.metadata.version(distribution)
+        except Exception as exc:  # noqa: BLE001 - any import failure is a broken install
+            checks.append(Check(f"package:{distribution}", FAIL, f"not importable: {exc}"))
+        else:
+            checks.append(Check(f"package:{distribution}", OK, version))
+    return checks
+
+
+def _books_dir_checks(settings: Settings, root: Path) -> list[Check]:
+    path = books_dir(root, settings.project.books_dir)
+    probe = path / f".write-test-{uuid4().hex[:8]}"
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+    except OSError as exc:
+        return [Check("books_dir", FAIL, str(exc))]
+    return [Check("books_dir", OK, f"{path} (writable)")]
+
+
+def _asset_checks() -> list[Check]:
+    assets = Path(tarjoman.__file__).resolve().parent / "export" / "epub_assets"
+    missing = [name for name in _EXPORT_ASSETS if not (assets / name).is_file()]
+    detail = (
+        f"missing: {', '.join(missing)}"
+        if missing
+        else "Vazirmatn Regular/Bold + OFL present"
+    )
+    return [Check("export_fonts", OK if not missing else FAIL, detail)]
+
+
+def _workspace_checks(base: Path, slug: str) -> list[Check]:
+    checks: list[Check] = []
+    db_path = base / "book.db"
+    try:
+        connection = sqlite3.connect(db_path)
+        try:
+            quick = connection.execute("PRAGMA quick_check").fetchone()
+            healthy = bool(quick) and str(quick[0]).lower() == "ok"
+            checks.append(
+                Check(
+                    "sqlite_check",
+                    OK if healthy else FAIL,
+                    "quick_check ok" if healthy else f"quick_check: {quick[0] if quick else 'empty'}",
+                )
+            )
+            try:
+                version_row = connection.execute(
+                    "SELECT MAX(version) FROM schema_version"
+                ).fetchone()
+                version = int(version_row[0]) if version_row and version_row[0] is not None else 0
+            except sqlite3.Error as exc:
+                checks.append(Check("schema", FAIL, f"schema_version unreadable: {exc}"))
+                version = 0
+            else:
+                checks.append(
+                    Check(
+                        "schema",
+                        OK if version == SCHEMA_VERSION else WARN,
+                        f"v{version} (expected v{SCHEMA_VERSION})",
+                    )
+                )
+            book = connection.execute(
+                "SELECT id, title_en FROM books WHERE slug = ? LIMIT 1", (slug,)
+            ).fetchone()
+            if book is None:
+                checks.append(Check("workspace", FAIL, f"no book row for {slug!r}"))
+            else:
+                book_id = int(book[0])
+                chapters = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM chapters WHERE book_id = ?", (book_id,)
+                    ).fetchone()[0]
+                )
+                segments = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM segments s JOIN chapters c ON c.id = s.chapter_id "
+                        "WHERE c.book_id = ?",
+                        (book_id,),
+                    ).fetchone()[0]
+                )
+                checks.append(
+                    Check(
+                        "workspace",
+                        OK,
+                        f"{slug}: {chapters} chapters, {segments} segments",
+                    )
+                )
+        finally:
+            connection.close()
+    except sqlite3.Error as exc:
+        checks.append(Check("workspace", FAIL, f"cannot read {db_path}: {exc}"))
+        return checks
+
+    artifacts = base / "artifacts"
+    checks.append(
+        Check(
+            "artifact:brief",
+            OK if (artifacts / "brief.yaml").is_file() else INFO,
+            "present"
+            if (artifacts / "brief.yaml").is_file()
+            else "optional; a built-in default brief is used",
+        )
+    )
+    checks.append(
+        Check(
+            "artifact:glossary",
+            OK if (artifacts / "glossary.yaml").is_file() else INFO,
+            "present"
+            if (artifacts / "glossary.yaml").is_file()
+            else "optional; glossary mode is off by default",
+        )
+    )
+    chapters = 0
+    try:
+        connection = sqlite3.connect(db_path)
+        try:
+            book = connection.execute(
+                "SELECT id FROM books WHERE slug = ? LIMIT 1", (slug,)
+            ).fetchone()
+            if book is not None:
+                chapters = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM chapters WHERE book_id = ?", (int(book[0]),)
+                    ).fetchone()[0]
+                )
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        chapters = 0
+    anchors_present = (artifacts / "anchors.yaml").is_file()
+    checks.append(
+        Check(
+            "artifact:anchors",
+            OK if anchors_present else (WARN if chapters > 1 else INFO),
+            "present"
+            if anchors_present
+            else "optional; chapters 2+ run with a warning unless anchors are approved",
+        )
+    )
+    return checks
 
 
 def _model_checks(settings: Settings, profile: ModelProfile) -> list[Check]:
@@ -170,7 +348,11 @@ def _model_checks(settings: Settings, profile: ModelProfile) -> list[Check]:
 def _render(checks: list[Check], json_out: bool) -> bool:
     failed = any(check.status == FAIL for check in checks)
     if json_out:
-        typer.echo(json.dumps({"checks": [asdict(check) for check in checks], "failed": failed}, indent=2))
+        typer.echo(
+            json.dumps(
+                {"checks": [asdict(check) for check in checks], "failed": failed}, indent=2
+            )
+        )
         return failed
     table = Table(title="tj doctor", show_lines=False)
     table.add_column("check", style="bold")

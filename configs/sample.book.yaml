@@ -1,16 +1,103 @@
-# A complete per-book override, copied to books/<slug>/config.yaml when needed.
+# Complete per-book override example.
+#
+# Copy this file to books/<slug>/config.yaml and keep only the keys you need to
+# change. Every key here exists in `Settings` (src/tarjoman/core/config.py);
+# unknown keys are rejected. Load order is:
+#   configs/default.yaml -> books/<slug>/config.yaml -> TARJOMAN_* env -> CLI flags
+# This file is never read automatically from `configs/`. Project-wide settings
+# (such as `project.books_dir`) belong in `configs/default.yaml`, not here.
+
 book:
-  rights_basis: user_supplied
-  translator: "Tarjoman"
+  # slug: my-book               # normally derived from the title at `tj init`
+  source_lang: en               # source language code
+  target_lang: fa               # Iranian Persian; EPUB dc:language is "fa"
+  rights_basis: user_supplied   # public_domain | licensed | user_supplied (informational, no gate)
+  translator: "Tarjoman"        # dc:contributor value in EPUB/DOCX
+  title_fa: null                # Persian title for dc:title; set it for an all-Persian export
+  cover: null                   # explicit cover path; default uses the source cover
+
+provider:
+  default: deepseek             # provider label
+  profile: deepseek             # deepseek | local | custom
+  models: configs/models/deepseek.yaml  # model alias file
+  thinking: disabled            # keep disabled for v1; thinking overrides require M10 evidence
+  thinking_overrides: {}         # per-agent experiment, e.g. {A6: low}
+  reasoning_allowance: 2048     # extra output-token headroom only when thinking is enabled
+  tariff: auto                  # auto | peak | offpeak (reported, never waited for)
+  timeout_s: 180                # per-call timeout
+  max_retries: 4                # transient retries
+  max_inflight: 4               # provider concurrency
+  fallbacks: []                 # optional fallback model aliases
+  log_prompts: false            # never enable for books you do not own
 
 glossary:
-  mode: "off"
+  mode: "off"                   # off (default) | provided | auto
+  # path: terms.yaml            # required only when mode=provided
+  approval: auto                # auto | manual (manual gates character/place entries)
+  auto_approve_min_confidence: 0.90  # auto mode approves proposals at or above this
 
 pipeline:
-  cost_mode: standard
+  cost_mode: standard           # auto | economy | standard | quality
+  window:
+    max_paragraphs: 8           # paragraphs per translation window
+    max_source_tokens: 900      # source-token ceiling per window
+    min_paragraphs: 4           # smallest normal window
+    overlap_paragraphs: 2       # context only; overlap is never retranslated
+  critics:
+    fidelity: true              # meaning/omission critic
+    style: true                 # Persian literary editor
+    max_revision_rounds: 1      # revise attempts per window
+    force_fidelity_on_length_outlier: true
+  passes:
+    readthrough: true           # source-free Persian read-through during `tj audit`
+    backtranslate: false        # post-v1; not wired
+    consistency_audit: true     # consistency auditor during `tj audit`
+  analyze:
+    sample_token_budget: 18000  # sample size for the book brief
+    summary_model_tier: cheap   # quality | balanced | cheap
+    brief_approval: auto        # auto | manual (manual pauses `tj analyze` with exit 3)
+  resume: true                  # reuse status + cache on re-runs
+
+persian:
+  digits: persian               # persian | ascii (use ascii for technical books)
+  keep_diacritics: false        # preserve Arabic diacritics
+  zwnj_repair: high_precision   # off | high_precision
+  ellipsis: unicode             # unicode (…) | ascii (...)
+  auto_fix: [digits, punctuation, whitespace]  # deterministic fixes applied before storage
+
+review:
+  enabled: true                 # write review/flags.csv; never blocks export by itself
+  flag_threshold: 55            # risk score at or above which a segment is flagged
+  sample_fraction: 0.05         # optional sample fraction for review
+  min_coverage_for_export: 1.0  # export gate
 
 budget:
-  max_usd: 10
+  max_usd: 10                   # per-book ceiling; the default product cap
+  abort_on_exceed: true         # pause (exit 3) instead of continuing
+  warn_at_fraction: 0.8         # warn at 80% of the cap
 
 export:
-  formats: [epub, docx, md]
+  formats: [epub, docx, md, txt]  # epub, docx, md, txt
+  pdf: false                    # also convert DOCX -> PDF via LibreOffice
+  bilingual: false              # optional self-contained bilingual HTML side product
+  epub:
+    rtl: true                   # right-to-left spine and XHTML
+    embed_fonts: true           # embed bundled Vazirmatn WOFF2
+    font_body: Vazirmatn        # body font family
+    endnotes_per_chapter: true  # per-chapter endnotes
+    validate_with_epubcheck: true  # external epubcheck when installed (optional)
+  docx:
+    page: A5                    # A5 | A4 | Letter
+    endnotes: true              # footnotes become chapter endnotes
+  markdown:
+    front_matter: true          # YAML front matter with lang/dir/title
+  bilingual_html:
+    include_source: true        # show the English source column
+
+logging:
+  level: INFO                   # DEBUG | INFO | WARNING | ERROR
+  json_logs: true               # structured log lines
+  console: rich                 # rich console output
+
+concurrency:
+  parallel_chapters: 1          # 1 = reading order (recommended); >1 trades coherence for speed
