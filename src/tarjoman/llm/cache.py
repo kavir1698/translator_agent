@@ -28,9 +28,12 @@ def cache_key(
 
 
 class ResponseCache:
-    def __init__(self, db: Database, *, enabled: bool = True) -> None:
+    def __init__(
+        self, db: Database, *, enabled: bool = True, write_enabled: bool = True
+    ) -> None:
         self.db = db
         self.enabled = enabled
+        self.write_enabled = write_enabled
 
     def get(self, key: str) -> LLMResult | None:
         if not self.enabled:
@@ -52,7 +55,7 @@ class ResponseCache:
         )
 
     def put(self, key: str, result: LLMResult) -> None:
-        if not self.enabled:
+        if not self.enabled or not self.write_enabled:
             return
         payload = asdict(result)
         payload.pop("meta", None)

@@ -218,10 +218,12 @@ class Database:
             conn.executemany(sql, rows)
 
     def fetchone(self, sql: str, params: Sequence[Any] = ()) -> sqlite3.Row | None:
-        return self.conn.execute(sql, params).fetchone()
+        with self._lock:
+            return self.conn.execute(sql, params).fetchone()
 
     def fetchall(self, sql: str, params: Sequence[Any] = ()) -> list[sqlite3.Row]:
-        return list(self.conn.execute(sql, params).fetchall())
+        with self._lock:
+            return list(self.conn.execute(sql, params).fetchall())
 
     def scalar(self, sql: str, params: Sequence[Any] = ()) -> Any:
         row = self.fetchone(sql, params)
@@ -283,6 +285,25 @@ class Database:
             (json.dumps(metrics, sort_keys=True, ensure_ascii=False), book_id),
         )
 
+    def set_book_metadata_value(self, book_id: int, key: str, value: Any) -> None:
+        row = self.get_book_by_id(book_id)
+        if row is None:
+            raise RuntimeFailure(f"book {book_id} does not exist")
+        try:
+            data = json.loads(row["metadata_json"] or "{}")
+        except json.JSONDecodeError:
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+        data[key] = value
+        self.execute(
+            "UPDATE books SET metadata_json = ? WHERE id = ?",
+            (json.dumps(data, sort_keys=True, ensure_ascii=False), book_id),
+        )
+
+    def set_book_title_fa(self, book_id: int, title_fa: str) -> None:
+        self.execute("UPDATE books SET title_fa = ? WHERE id = ?", (title_fa, book_id))
+
     # -------------------------------------------------------------- chapters
     def insert_chapter(
         self,
@@ -325,6 +346,14 @@ class Database:
         if to not in _CHAPTER_TRANSITIONS.get(current, set()):
             raise InvalidTransition(f"chapter {chapter_id}: {current} -> {to} is not allowed")
         self.execute("UPDATE chapters SET status = ? WHERE id = ?", (to, chapter_id))
+
+    def set_chapter_rolling_summary(self, chapter_id: int, summary_fa: str) -> None:
+        self.execute(
+            "UPDATE chapters SET rolling_summary_fa = ? WHERE id = ?", (summary_fa, chapter_id)
+        )
+
+    def set_chapter_title_fa(self, chapter_id: int, title_fa: str) -> None:
+        self.execute("UPDATE chapters SET title_fa = ? WHERE id = ?", (title_fa, chapter_id))
 
     # ------------------------------------------------------- chapter summaries
     def upsert_chapter_summary(
@@ -372,6 +401,70 @@ class Database:
             """,
             (book_id,),
         )
+
+    # ----------------------------------------------------------------- ledger
+    def upsert_ledger(
+        self,
+        *,
+        book_id: int,
+        chapter_idx: int,
+        kind: str,
+        key: str,
+        value: dict[str, Any],
+    ) -> None:
+        self.execute(
+            """
+            INSERT INTO ledger (book_id, chapter_idx, kind, key, value_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(book_id, kind, key) DO UPDATE SET
+                chapter_idx = excluded.chapter_idx,
+                value_json = excluded.value_json,
+                created_at = excluded.created_at
+            """,
+            (
+                book_id,
+                chapter_idx,
+                kind,
+                key,
+                json.dumps(value, ensure_ascii=False),
+                utc_now_iso(),
+            ),
+        )
+
+    def ledger_entries(self, book_id: int) -> list[sqlite3.Row]:
+        return self.fetchall(
+            "SELECT * FROM ledger WHERE book_id = ? ORDER BY chapter_idx, id", (book_id,)
+        )
+
+    def sync_ledger_artifact(self, base_path: Path, book_id: int) -> Path:
+        """Merge the DB over the human-editable ledger artifact, then replace atomically."""
+        path = base_path / "artifacts" / "ledger.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        merged: dict[tuple[str, str], dict[str, Any]] = {}
+        if path.is_file():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(item, dict) and item.get("kind") and item.get("key"):
+                    merged[(str(item["kind"]), str(item["key"]))] = item
+        for row in self.ledger_entries(book_id):
+            key = (str(row["kind"]), str(row["key"]))
+            merged[key] = {
+                "kind": row["kind"],
+                "key": row["key"],
+                "value": json.loads(row["value_json"] or "{}"),
+                "chapter": int(row["chapter_idx"]),
+            }
+        temp = path.with_name(f"{path.name}.tmp")
+        with temp.open("w", encoding="utf-8") as handle:
+            for key in sorted(merged):
+                handle.write(json.dumps(merged[key], ensure_ascii=False) + "\n")
+        temp.replace(path)
+        return path
 
     # -------------------------------------------------------------- segments
     def insert_segment(
@@ -777,7 +870,11 @@ class Database:
                     message = excluded.message,
                     quote_source = excluded.quote_source,
                     quote_target = excluded.quote_target,
-                    context_json = excluded.context_json
+                    context_json = excluded.context_json,
+                    status = CASE WHEN issues.status = 'waived' THEN 'waived' ELSE 'open' END,
+                    resolved_by = CASE WHEN issues.status = 'waived' THEN issues.resolved_by END,
+                    resolution = CASE WHEN issues.status = 'waived' THEN issues.resolution END,
+                    resolved_at = CASE WHEN issues.status = 'waived' THEN issues.resolved_at END
                 """,
                 (
                     segment_id,
@@ -980,6 +1077,22 @@ class Database:
     def calls_for_run(self, run_id_value: str) -> list[sqlite3.Row]:
         return self.fetchall(
             "SELECT * FROM llm_calls WHERE run_id = ? ORDER BY id", (run_id_value,)
+        )
+
+    def spend_for_run(self, run_id_value: str) -> float:
+        return float(
+            self.scalar(
+                "SELECT COALESCE(SUM(cost_usd), 0) FROM llm_calls WHERE run_id = ?",
+                (run_id_value,),
+            )
+            or 0.0
+        )
+
+    def latest_run(self, book_id: int, stage: str) -> sqlite3.Row | None:
+        return self.fetchone(
+            "SELECT * FROM runs WHERE book_id = ? AND stage = ? "
+            "ORDER BY started_at DESC, rowid DESC LIMIT 1",
+            (book_id, stage),
         )
 
     # ------------------------------------------------------------------ cache

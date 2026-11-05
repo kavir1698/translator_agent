@@ -12,13 +12,14 @@ reader first, then as an editor. Your job is voice, rhythm and naturalness — n
 accuracy (another editor covers that). You must not change meaning and must not
 add information.
 
-BRIEF:
+{% if brief_card %}BRIEF:
 {{ brief_card }}
-
-APPROVED STYLE ANCHORS (the voice to match):
+{% endif %}
+{% if anchors %}APPROVED STYLE ANCHORS (the voice to match):
 {{ anchors }}
-
-CHAPTER CONTEXT: {{ chapter_summary }}
+{% endif %}
+{% if chapter_summary %}CHAPTER CONTEXT: {{ chapter_summary }}
+{% endif %}
 
 SOURCE (for meaning reference only):
 <source_text>

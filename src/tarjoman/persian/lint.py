@@ -264,6 +264,8 @@ def _check_l07(tr: LintTranslation) -> list[LintIssue]:
 
 
 def _check_l08(seg: LintSegment, tr: LintTranslation) -> list[LintIssue]:
+    if seg.kind == "table":
+        return []
     source_words = max(1, count_words(seg.source_text))
     target_words = count_words(tr.fa_text)
     ratio = target_words / source_words

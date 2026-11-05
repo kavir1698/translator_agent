@@ -54,3 +54,24 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - Sentinels now rebuild translated HTML in model order; `<br>` atomics become newlines in `fa_text`; noterefs are atomic with `target_id`; HTML comments are ignored.
 - L10 uses token boundaries; Lint dedupe keys map to the DB `seg:`/`ch:` namespaces; L06 shares the punctuation letter class; L04 uses the shared banned-codepoint table.
 - EPUB non-linear spine items are read (after linear body) and skipped documents are reported in metadata; entries have decompression limits. Markdown link URLs are scheme-checked and attribute-escaped.
+## M4 — translation core
+- M4: `plan_windows` operates on paragraph segments; an oversized segment becomes a single-segment window (the >1,800-token intra-paragraph split stays deferred). Table blocks are rendered with explicit ` | ` cell separators and newline row separators so markers cannot fuse cells; L08 is skipped for table blocks (cell concatenation makes a word ratio meaningless).
+- M4: The translator uses the `balanced` tier in `economy`/`standard` and reserves the `quality` tier for A6–A8 in `quality` mode. This matches the plan's cost table and keeps `gpt-6-luna` off every ordinary draft.
+- M4: Markup/id validation runs before caching; invalid responses are retried once uncached with a stricter sentinel reminder, then stored best-effort with an L02 issue (never silently dropped). A `finish_reason=length` or repeated schema failure falls back to per-segment calls.
+- M4: `done` is decided by open `qa`-stage error issues only; critic/audit issues flag risk and review but do not move a segment out of `done`. Coverage is L01-based (current translation, non-empty, ≥1 Persian letter) and scoped to the selected chapters, so `--chapters 1` reports 100% when chapter 1 is complete.
+- M4: Cross-turn issue hygiene: `upsert_issue` reopens a resolved issue but never clears a human waiver; lint issues are reconciled (resolved) when the current translation no longer reproduces them; window-scope issues are reconciled per window; critique issues are resolved when an accepted revision/repair applies them.
+- M4: `--no-cache` bypasses reads but still writes; `--refresh` deletes this book's cache rows first. A rerun with nothing to translate makes no calls and reports a 100% cache-hit rate.
+- M4: Prompt templates now wrap optional blocks in Jinja conditionals so an empty glossary/cast/anchor block leaves no empty heading for the model to fill.
+- M4: No real-provider smoke run was performed in this environment (no API key); the mock-provider acceptance run is the recorded evidence.
+## M4.5 — anchor calibration
+- M4.5: `tj anchors propose` selects up to 3 deterministic pairs from the first body chapter (longest non-dialogue prose, highest dialogue ratio, most inline emphasis; tie-break by segment id). Approval requires 2–3 pairs and records `anchors_hash` in `books.metadata_json` and the run artifact hashes.
+- M4.5: Missing anchors only warn when the selected scope includes chapter 2+; `--require-anchors` turns that into a configuration error. `--no-anchors` skips them entirely; combining the two flags is a usage error.
+## M5 — critics, reviser, budget
+- M5: Critics run sequentially (not in parallel) to keep the synchronous provider/cache path deterministic; the budget guard is re-checked before each critic, revision, repair and ledger call.
+- M5: Unverified critic quotes are downgraded to `warn` and are never sent to the reviser, preventing repair livelock. Accepted revisions clear their critique issues; rejected revisions keep the draft and record `revision_regressed`.
+## M6 — orchestration
+- M6: Resume is status + cache based: done segments are never re-requested, a new run reuses cached responses, and window-scope/translate-stage issues are resolved when their work succeeds. Per-window exceptions are recorded as `WINDOW_FAILED` and the chapter continues.
+- M6: Parallel chapters share one SQLite connection under the existing write lock and serialize reads too; ledger curation is skipped in parallel mode (the initial warning now matches behavior) and when a chapter translated zero segments.
+- M6: Ledger writes merge the existing human-editable `ledger.jsonl` over DB rows and replace the file atomically. Stale glossary redo retranslates all stale segments because an approved-glossary change invalidates the stable cached prefix for every window; above 300 entries this would become window-targeted.
+- M6: `--replan` retranslates the selected scope as new versions (append-only history) instead of only bypassing the plan-hash check.
+- M6: `runs/<id>/report.md` includes status, tariff, cost mode, coverage, cache hit rate, cost by agent, cost/1k words and the 20 riskiest segments; the manifest reads actual prompt versions and token calibrations, and marks a no-brief run `experimental`.

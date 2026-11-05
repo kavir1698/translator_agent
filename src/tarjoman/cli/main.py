@@ -8,8 +8,18 @@ import typer
 
 from tarjoman.core.logging import configure_logging
 
-from . import analyze_cmd, doctor_cmd, estimate_cmd, init_cmd, inspect_cmd
+from . import (
+    analyze_cmd,
+    doctor_cmd,
+    estimate_cmd,
+    init_cmd,
+    inspect_cmd,
+    retranslate_cmd,
+    translate_cmd,
+)
+from .anchors_cmd import anchors_app
 from .glossary_cmd import glossary_app
+from .qa_cmd import qa_app
 
 app = typer.Typer(
     name="tj",
@@ -38,7 +48,11 @@ app.command("estimate")(estimate_cmd.estimate)
 app.command("init")(init_cmd.init)
 app.command("inspect")(inspect_cmd.inspect)
 app.command("analyze")(analyze_cmd.analyze)
+app.command("translate")(translate_cmd.translate)
+app.command("retranslate")(retranslate_cmd.retranslate)
 app.add_typer(glossary_app, name="glossary")
+app.add_typer(qa_app, name="qa")
+app.add_typer(anchors_app, name="anchors")
 
 
 if __name__ == "__main__":

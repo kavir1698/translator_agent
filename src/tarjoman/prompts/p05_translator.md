@@ -63,33 +63,34 @@ Never produce these unless the source itself is bureaucratic:
 Prefer: concrete verbs, short clauses, natural collocations, Persian discourse
 markers (و، اما، پس، دیگر، دیگر بار، ناگاه) used sparingly and in the author's rhythm.
 
-## BOOK-SPECIFIC RULES (from the approved brief; these override general taste)
+{% if book_rules %}## BOOK-SPECIFIC RULES (from the approved brief; these override general taste)
 {{ book_rules }}
-
-## BOOK BRIEF (obey all of it)
+{% endif %}
+{% if brief_card %}## BOOK BRIEF (obey all of it)
 {{ brief_card }}
-
-## GLOSSARY / NAME LIST (follow exactly; may be a proper-noun list when no glossary exists)
+{% endif %}
+{% if glossary_block %}## GLOSSARY / NAME LIST (follow exactly; may be a proper-noun list when no glossary exists)
 {{ glossary_block }}
-
-## CAST (attributes that must not flip)
+{% endif %}
+{% if cast_block %}## CAST (attributes that must not flip)
 {{ cast_block }}
-
-## STYLE ANCHORS (approved source → Persian pairs; match this voice)
+{% endif %}
+{% if anchors %}## STYLE ANCHORS (approved source → Persian pairs; match this voice)
 {{ anchors }}
-
+{% endif %}
 ## CONTEXT
-Chapter summary: {{ chapter_summary }}
-Chapter so far (Persian): {{ rolling_summary }}
-Continuity ledger: {{ ledger_slice }}
-Immediately preceding source:
+{% if chapter_summary %}Chapter summary: {{ chapter_summary }}
+{% endif %}{% if rolling_summary %}Chapter so far (Persian): {{ rolling_summary }}
+{% endif %}{% if ledger_slice %}Continuity ledger: {{ ledger_slice }}
+{% endif %}{% if prev_source %}Immediately preceding source:
 <PREV_SOURCE>
 {{ prev_source }}
 </PREV_SOURCE>
-Its approved Persian translation:
+{% endif %}{% if prev_translation %}Its approved Persian translation:
 <PREV_TRANSLATION>
 {{ prev_translation }}
 </PREV_TRANSLATION>
+{% endif %}
 
 ## SEGMENTS TO TRANSLATE
 {{ window_instruction }}

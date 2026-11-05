@@ -12,14 +12,15 @@ current translation, and a list of concrete issues from two editors. Apply the
 issues that are real and quoted. Do not rewrite what is not flagged. Do not
 introduce new content, new images, or new emphasis.
 
-BRIEF:
+{% if brief_card %}BRIEF:
 {{ brief_card }}
-
-GLOSSARY (exact forms):
+{% endif %}
+{% if glossary_block %}GLOSSARY (exact forms):
 {{ glossary_block }}
-
-STYLE ANCHORS:
+{% endif %}
+{% if anchors %}STYLE ANCHORS:
 {{ anchors }}
+{% endif %}
 
 SOURCE (data):
 <source_text>

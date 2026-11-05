@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
@@ -97,6 +98,8 @@ def run_agent(
     cache: ResponseCache | None = None,
     max_output_tokens: int | None = None,
     repair: bool = True,
+    post_validate: Callable[[ModelT], None] | None = None,
+    cache_if: Callable[[ModelT], bool] | None = None,
 ) -> AgentResult[ModelT]:
     """One structured agent call. Cache first, then one schema-repair call."""
     rendered = prompt.render(variables)
@@ -118,6 +121,8 @@ def run_agent(
         if hit is not None:
             try:
                 value = _coerce(schema_model, hit)
+                if post_validate is not None:
+                    post_validate(value)
             except SchemaValidationError:
                 hit = None
             else:
@@ -201,7 +206,10 @@ def run_agent(
         )
         value = _coerce(schema_model, result)
 
-    if cache is not None and key is not None:
+    if post_validate is not None:
+        post_validate(value)
+
+    if cache is not None and key is not None and (cache_if is None or cache_if(value)):
         cache.put(key, result)
 
     return AgentResult(

@@ -48,6 +48,28 @@ def load_context(slug: str | None = None) -> Context:
     return Context(root=root, settings=settings, profile=profile, slug=resolved)
 
 
+def parse_int_list(value: str | None) -> list[int] | None:
+    if not value:
+        return None
+    result: list[int] = []
+    for part in value.split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if "-" in item:
+            start, end = item.split("-", 1)
+            result.extend(range(int(start), int(end) + 1))
+        else:
+            result.append(int(item))
+    return sorted(set(result)) or None
+
+
+def parse_str_list(value: str | None) -> list[str] | None:
+    if not value:
+        return None
+    return [item.strip() for item in value.split(",") if item.strip()] or None
+
+
 def build_provider(context: Context) -> Provider:
     """Mock fixtures when requested (offline tests), otherwise the real provider."""
     fixtures = os.environ.get("TARJOMAN_MOCK_FIXTURES")

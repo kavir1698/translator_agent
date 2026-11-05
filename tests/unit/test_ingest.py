@@ -6,7 +6,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-from tests.fixtures.build import SAMPLE_PARAGRAPHS
 from typer.testing import CliRunner
 
 from tarjoman.cli.main import app
@@ -17,6 +16,7 @@ from tarjoman.ingest.blocks import BlockKind
 from tarjoman.ingest.normalize_source import normalized_for_compare
 from tarjoman.ingest.reader import read_source
 from tarjoman.pipeline.init_pass import init_book
+from tests.fixtures.build import SAMPLE_PARAGRAPHS
 
 runner = CliRunner()
 

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from tests.fixtures.build import ENTITY_NAMES
 
 from tarjoman.core.config import load_settings, model_profile
 from tarjoman.core.db import Database
@@ -19,6 +18,7 @@ from tarjoman.persian.lint import (
 from tarjoman.pipeline.analyze_pass import build_sample, run_analyze
 from tarjoman.pipeline.glossary_ops import approved_terms
 from tarjoman.pipeline.init_pass import init_book
+from tests.fixtures.build import ENTITY_NAMES
 
 
 def _brief_payload() -> dict[str, Any]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +83,13 @@ class MockProvider:
         remaining = self._fail_counts.get(key, int(fixture.get("fail_times", 0)))
         if remaining > 0:
             self._fail_counts[key] = remaining - 1
-            raise MockProviderFailure(str(fixture.get("failure", "invalid_json")))
+            failure = str(fixture.get("failure", "invalid_json"))
+            if failure == "markup_broken":
+                responses = fixture.get("responses") or []
+                if not responses:
+                    raise MissingFixture(f"fixture {key} has no responses")
+                return self._from_payload(_break_markup(responses[0]), model, messages)
+            raise MockProviderFailure(failure)
 
         responses = fixture.get("responses") or []
         if not responses:
@@ -118,3 +125,26 @@ class MockProvider:
             finish_reason="stop",
             meta={"mock": True, "model": model},
         )
+
+
+def _break_markup(payload: Any) -> Any:
+    """Inject the `markup_broken` failure: strip every sentinel from translations."""
+    if not isinstance(payload, dict):
+        return payload
+    broken = dict(payload)
+    segments = broken.get("segments")
+    if isinstance(segments, list):
+        broken["segments"] = [
+            {
+                **item,
+                "fa_markup": re.sub(
+                    r"⟨/?\d+⟩|⟦/?\d+⟧|\[\[#?\d+\]\]|\[\[/\d+\]\]",
+                    "",
+                    str(item.get("fa_markup", "")),
+                ),
+            }
+            if isinstance(item, dict)
+            else item
+            for item in segments
+        ]
+    return broken

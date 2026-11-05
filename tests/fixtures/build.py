@@ -115,7 +115,7 @@ def build_epub(path: Path) -> Path:
     chapter_one = _xhtml(
         "Chapter One",
         f"""<h1>Chapter One</h1>
-<p>He was <em>very</em> angry, <a href="#n1" epub:type="noteref">she said</a>.</p>
+<p>He was <em>very</em> angry, <a href="#fn1" epub:type="noteref">she said</a>.</p>
 <p>{SAMPLE_PARAGRAPHS[0]}</p>
 <p>{SAMPLE_PARAGRAPHS[1]}</p>
 <p class="verse">The first line<br/>The second line<br/>The third line</p>

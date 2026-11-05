@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 from lxml import html as lxml_html
-from tests.fixtures.build import SAMPLE_PARAGRAPHS
 from typer.testing import CliRunner
 
 from tarjoman.cli.main import app
@@ -22,6 +21,7 @@ from tarjoman.ingest.reader import read_source
 from tarjoman.persian.lint import LintIssue, LintSegment, LintTranslation, check_segment
 from tarjoman.persian.markup import normalize_translation, rebuilt_html, strip_markup
 from tarjoman.pipeline.init_pass import init_book
+from tests.fixtures.build import SAMPLE_PARAGRAPHS
 
 runner = CliRunner()
 
