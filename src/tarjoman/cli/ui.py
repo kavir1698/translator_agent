@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import sys
 from collections.abc import Callable
 from typing import Any, TypeVar
 
@@ -11,8 +12,23 @@ from rich.console import Console
 
 from tarjoman.core.errors import TarjomanError
 
-console = Console()
-err_console = Console(stderr=True)
+
+def _force_utf8() -> None:
+    """Persian terms must not crash a cp1252 Windows console."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
+
+
+_force_utf8()
+
+console = Console(legacy_windows=False)
+err_console = Console(stderr=True, legacy_windows=False)
 F = TypeVar("F", bound=Callable[..., Any])
 
 

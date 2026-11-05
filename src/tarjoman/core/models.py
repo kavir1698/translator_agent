@@ -149,7 +149,7 @@ class BookBrief(_Strict):
     pov: str
     narrative_tense: str
     narrative_distance: str
-    register: str
+    register: str = Field(...)
     register_target_fa: Literal[
         "literary-standard", "formal-classic", "colloquial-narrative", "mixed"
     ]

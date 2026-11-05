@@ -86,6 +86,15 @@ tj review build              # optional report for flagged segments
 
 Optional consistency: `tj init book.epub --glossary terms.yaml`, or `tj analyze --auto-glossary`. Optional gates: `--review-brief`, `--manual-glossary`.
 
+## Credentials
+
+Copy `.env.example` to `.env` and fill in the keys you use:
+
+- `DEEPSEEK_API_KEY` — default draft/critic model (`deepseek-flash`).
+- `OPENROUTER_API_KEY` — quality tier used by the brief, glossary proposer and judge (`gpt-6-luna` in `configs/models/deepseek.yaml`).
+
+`.env` is gitignored. `tj doctor` reports whether each key is present without printing its value.
+
 ## What the system does
 
 ```

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from tarjoman.core.config import Settings, load_settings, model_profile
 from tarjoman.core.cost import ModelProfile
 from tarjoman.core.paths import books_dir, project_root
+from tarjoman.llm.litellm_provider import LiteLLMProvider
+from tarjoman.llm.mock_provider import MockProvider
+from tarjoman.llm.provider import Provider
 
 
 @dataclass(frozen=True)
@@ -42,3 +46,16 @@ def load_context(slug: str | None = None) -> Context:
     )
     profile = model_profile(settings, root)
     return Context(root=root, settings=settings, profile=profile, slug=resolved)
+
+
+def build_provider(context: Context) -> Provider:
+    """Mock fixtures when requested (offline tests), otherwise the real provider."""
+    fixtures = os.environ.get("TARJOMAN_MOCK_FIXTURES")
+    if fixtures:
+        return MockProvider(fixtures_dir=fixtures)
+    return LiteLLMProvider(
+        profile=context.profile,
+        timeout_s=context.settings.provider.timeout_s,
+        max_retries=context.settings.provider.max_retries,
+        thinking=context.settings.provider.thinking,
+    )

@@ -8,7 +8,8 @@ import typer
 
 from tarjoman.core.logging import configure_logging
 
-from . import doctor_cmd, estimate_cmd, init_cmd, inspect_cmd
+from . import analyze_cmd, doctor_cmd, estimate_cmd, init_cmd, inspect_cmd
+from .glossary_cmd import glossary_app
 
 app = typer.Typer(
     name="tj",
@@ -36,6 +37,8 @@ app.command("doctor")(doctor_cmd.doctor)
 app.command("estimate")(estimate_cmd.estimate)
 app.command("init")(init_cmd.init)
 app.command("inspect")(inspect_cmd.inspect)
+app.command("analyze")(analyze_cmd.analyze)
+app.add_typer(glossary_app, name="glossary")
 
 
 if __name__ == "__main__":

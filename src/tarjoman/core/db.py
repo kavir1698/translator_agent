@@ -12,10 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from .errors import ConfigError, InvalidTransition, RuntimeFailure
+from .glossary import normalize_term_en
 from .ids import run_id as new_run_id
 from .ids import utc_now_iso
 from .models import (
     ChapterStatus,
+    GlossaryKind,
+    GlossaryStatus,
     PassKind,
     RunStatus,
     SegmentStatus,
@@ -271,6 +274,15 @@ class Database:
     def set_book_import_quality(self, book_id: int, quality: float) -> None:
         self.execute("UPDATE books SET import_quality = ? WHERE id = ?", (quality, book_id))
 
+    def set_book_brief_hash(self, book_id: int, brief_hash: str) -> None:
+        self.execute("UPDATE books SET brief_hash = ? WHERE id = ?", (brief_hash, book_id))
+
+    def set_book_source_metrics(self, book_id: int, metrics: dict[str, Any]) -> None:
+        self.execute(
+            "UPDATE books SET source_metrics_json = ? WHERE id = ?",
+            (json.dumps(metrics, sort_keys=True, ensure_ascii=False), book_id),
+        )
+
     # -------------------------------------------------------------- chapters
     def insert_chapter(
         self,
@@ -313,6 +325,53 @@ class Database:
         if to not in _CHAPTER_TRANSITIONS.get(current, set()):
             raise InvalidTransition(f"chapter {chapter_id}: {current} -> {to} is not allowed")
         self.execute("UPDATE chapters SET status = ? WHERE id = ?", (to, chapter_id))
+
+    # ------------------------------------------------------- chapter summaries
+    def upsert_chapter_summary(
+        self,
+        *,
+        chapter_id: int,
+        summary_en: str,
+        continuity: dict[str, Any],
+        tone_notes: str,
+        translation_landmines: Sequence[str] = (),
+    ) -> None:
+        self.execute(
+            """
+            INSERT INTO chapter_summaries (chapter_id, summary_en, continuity_json, tone_notes,
+                                           landmines_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(chapter_id) DO UPDATE SET
+                summary_en = excluded.summary_en,
+                continuity_json = excluded.continuity_json,
+                tone_notes = excluded.tone_notes,
+                landmines_json = excluded.landmines_json,
+                created_at = excluded.created_at
+            """,
+            (
+                chapter_id,
+                summary_en,
+                json.dumps(continuity, ensure_ascii=False),
+                tone_notes,
+                json.dumps(list(translation_landmines), ensure_ascii=False),
+                utc_now_iso(),
+            ),
+        )
+
+    def get_chapter_summary(self, chapter_id: int) -> sqlite3.Row | None:
+        return self.fetchone(
+            "SELECT * FROM chapter_summaries WHERE chapter_id = ?", (chapter_id,)
+        )
+
+    def chapter_summaries(self, book_id: int) -> list[sqlite3.Row]:
+        return self.fetchall(
+            """
+            SELECT cs.*, c.idx, c.title_en FROM chapter_summaries cs
+            JOIN chapters c ON c.id = cs.chapter_id
+            WHERE c.book_id = ? ORDER BY c.idx
+            """,
+            (book_id,),
+        )
 
     # -------------------------------------------------------------- segments
     def insert_segment(
@@ -480,6 +539,213 @@ class Database:
             "SELECT * FROM translations WHERE segment_id = ? ORDER BY version", (segment_id,)
         )
 
+    # --------------------------------------------------------------- glossary
+    def upsert_glossary_entry(
+        self,
+        *,
+        book_id: int,
+        term_en: str,
+        term_fa: str,
+        kind: str = GlossaryKind.TERM,
+        status: str = GlossaryStatus.PROPOSED,
+        source: str = "candidate",
+        confidence: float = 0.0,
+        aliases_en: Sequence[str] = (),
+        aliases_fa: Sequence[str] = (),
+        gender: str = "unknown",
+        notes: str = "",
+        approved_by: str | None = None,
+        preserve_approved: bool = True,
+    ) -> int:
+        if kind not in {item.value for item in GlossaryKind}:
+            raise RuntimeFailure(f"unknown glossary kind: {kind}")
+        if status not in {item.value for item in GlossaryStatus}:
+            raise RuntimeFailure(f"unknown glossary status: {status}")
+        if source not in {"candidate", "manual", "imported", "suggested"}:
+            raise RuntimeFailure(f"unknown glossary source: {source}")
+        norm = normalize_term_en(term_en)
+        if not norm:
+            raise RuntimeFailure(f"glossary term has no usable English form: {term_en!r}")
+        now = utc_now_iso()
+        with self.transaction() as conn:
+            existing = conn.execute(
+                "SELECT * FROM glossary WHERE book_id = ? AND term_en_norm = ? AND kind = ?",
+                (book_id, norm, kind),
+            ).fetchone()
+            if existing is not None:
+                if preserve_approved and existing["status"] == GlossaryStatus.APPROVED:
+                    return int(existing["id"])
+                conn.execute(
+                    """
+                    UPDATE glossary SET term_en = ?, term_fa = ?, aliases_json = ?,
+                        aliases_fa_json = ?, status = ?, source = ?, confidence = ?, gender = ?,
+                        notes = ?, approved_by = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        term_en,
+                        term_fa,
+                        json.dumps(list(aliases_en), ensure_ascii=False),
+                        json.dumps(list(aliases_fa), ensure_ascii=False),
+                        status,
+                        source,
+                        max(0.0, min(1.0, confidence)),
+                        gender,
+                        notes,
+                        approved_by,
+                        now,
+                        int(existing["id"]),
+                    ),
+                )
+                return int(existing["id"])
+            cursor = conn.execute(
+                """
+                INSERT INTO glossary (book_id, term_en, term_en_norm, term_fa, kind, aliases_json,
+                                      aliases_fa_json, status, source, confidence, gender, notes,
+                                      approved_by, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    book_id,
+                    term_en,
+                    norm,
+                    term_fa,
+                    kind,
+                    json.dumps(list(aliases_en), ensure_ascii=False),
+                    json.dumps(list(aliases_fa), ensure_ascii=False),
+                    status,
+                    source,
+                    max(0.0, min(1.0, confidence)),
+                    gender,
+                    notes,
+                    approved_by,
+                    now,
+                ),
+            )
+            return int(cursor.lastrowid or 0)
+
+    def get_glossary_entry(self, entry_id: int) -> sqlite3.Row | None:
+        return self.fetchone("SELECT * FROM glossary WHERE id = ?", (entry_id,))
+
+    def glossary_entries(
+        self, book_id: int, *, status: str | None = None
+    ) -> list[sqlite3.Row]:
+        if status is not None:
+            return self.fetchall(
+                "SELECT * FROM glossary WHERE book_id = ? AND status = ? "
+                "ORDER BY term_en COLLATE NOCASE",
+                (book_id, status),
+            )
+        return self.fetchall(
+            "SELECT * FROM glossary WHERE book_id = ? ORDER BY term_en COLLATE NOCASE",
+            (book_id,),
+        )
+
+    def set_glossary_status(
+        self, entry_id: int, status: str, *, approved_by: str | None = None
+    ) -> None:
+        if status not in {item.value for item in GlossaryStatus}:
+            raise RuntimeFailure(f"unknown glossary status: {status}")
+        self.execute(
+            "UPDATE glossary SET status = ?, approved_by = ?, updated_at = ? WHERE id = ?",
+            (status, approved_by, utc_now_iso(), entry_id),
+        )
+
+    def update_glossary_term(
+        self,
+        entry_id: int,
+        *,
+        term_en: str | None = None,
+        term_fa: str | None = None,
+        kind: str | None = None,
+        aliases_en: Sequence[str] | None = None,
+        aliases_fa: Sequence[str] | None = None,
+        notes: str | None = None,
+    ) -> None:
+        row = self.get_glossary_entry(entry_id)
+        if row is None:
+            raise RuntimeFailure(f"glossary entry {entry_id} does not exist")
+        new_en = term_en if term_en is not None else str(row["term_en"])
+        new_kind = kind if kind is not None else str(row["kind"])
+        if new_kind not in {item.value for item in GlossaryKind}:
+            raise RuntimeFailure(f"unknown glossary kind: {new_kind}")
+        self.execute(
+            """
+            UPDATE glossary SET term_en = ?, term_en_norm = ?, term_fa = ?, kind = ?,
+                aliases_json = ?, aliases_fa_json = ?, notes = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                new_en,
+                normalize_term_en(new_en),
+                term_fa if term_fa is not None else row["term_fa"],
+                new_kind,
+                json.dumps(
+                    list(aliases_en) if aliases_en is not None else json.loads(row["aliases_json"]),
+                    ensure_ascii=False,
+                ),
+                json.dumps(
+                    list(aliases_fa)
+                    if aliases_fa is not None
+                    else json.loads(row["aliases_fa_json"]),
+                    ensure_ascii=False,
+                ),
+                notes if notes is not None else row["notes"],
+                utc_now_iso(),
+                entry_id,
+            ),
+        )
+
+    def add_glossary_suggestion(
+        self,
+        *,
+        book_id: int,
+        segment_id: str,
+        term_en: str,
+        term_fa: str,
+        kind: str,
+        reason: str = "",
+    ) -> int:
+        norm = normalize_term_en(term_en)
+        with self.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO glossary_suggestions (book_id, segment_id, term_en, term_en_norm,
+                                                  term_fa, kind, reason, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+                ON CONFLICT(book_id, term_en_norm, segment_id) DO UPDATE SET
+                    term_fa = excluded.term_fa,
+                    kind = excluded.kind,
+                    reason = excluded.reason
+                """,
+                (book_id, segment_id, term_en, norm, term_fa, kind, reason, utc_now_iso()),
+            )
+            row = conn.execute(
+                "SELECT id FROM glossary_suggestions "
+                "WHERE book_id = ? AND term_en_norm = ? AND segment_id = ?",
+                (book_id, norm, segment_id),
+            ).fetchone()
+            return int(row[0])
+
+    def pending_glossary_suggestions(self, book_id: int) -> list[sqlite3.Row]:
+        return self.fetchall(
+            """
+            SELECT gs.*, s.chapter_id, s.idx AS segment_idx
+            FROM glossary_suggestions gs
+            JOIN segments s ON s.id = gs.segment_id
+            WHERE gs.book_id = ? AND gs.status = 'pending'
+            ORDER BY gs.term_en COLLATE NOCASE, gs.segment_id
+            """,
+            (book_id,),
+        )
+
+    def set_glossary_suggestion_status(self, suggestion_id: int, status: str) -> None:
+        if status not in {"pending", "promoted", "rejected"}:
+            raise RuntimeFailure(f"unknown suggestion status: {status}")
+        self.execute(
+            "UPDATE glossary_suggestions SET status = ? WHERE id = ?", (status, suggestion_id)
+        )
+
     # ----------------------------------------------------------------- issues
     def upsert_issue(
         self,
@@ -619,6 +885,15 @@ class Database:
         if cost_usd is not None:
             self.execute("UPDATE runs SET cost_usd = ? WHERE id = ?", (cost_usd, identifier))
 
+    def update_run_artifacts(self, identifier: str, artifacts_hash: dict[str, str]) -> None:
+        row = self.get_run(identifier)
+        if row is None:
+            raise RuntimeFailure(f"run {identifier} does not exist")
+        self.execute(
+            "UPDATE runs SET artifacts_hash_json = ? WHERE id = ?",
+            (json.dumps(artifacts_hash, ensure_ascii=False), identifier),
+        )
+
     def transition_run(self, identifier: str, to: str) -> None:
         row = self.get_run(identifier)
         if row is None:
@@ -700,6 +975,11 @@ class Database:
                 error,
                 utc_now_iso(),
             ),
+        )
+
+    def calls_for_run(self, run_id_value: str) -> list[sqlite3.Row]:
+        return self.fetchall(
+            "SELECT * FROM llm_calls WHERE run_id = ? ORDER BY id", (run_id_value,)
         )
 
     # ------------------------------------------------------------------ cache

@@ -14,6 +14,34 @@ from reportlab.pdfgen import canvas
 TITLE = "The Test Book"
 AUTHOR = "A. Writer"
 
+ENTITY_NAMES = [
+    "Santiago",
+    "Manolin",
+    "Perico",
+    "Martin",
+    "Rogelio",
+    "Carlos",
+    "Dolores",
+    "Pedro",
+    "Luis",
+    "Miguel",
+    "Teresa",
+    "Rosa",
+    "Isabel",
+    "Antonio",
+    "Franco",
+    "Elisa",
+    "Marta",
+    "Javier",
+    "Rafael",
+    "Sofia",
+    "Havana",
+    "Cojimar",
+    "Camaguey",
+    "Florida",
+    "Miami",
+]
+
 SAMPLE_PARAGRAPHS = [
     "The old man walked down to the harbour before sunrise, carrying a folded net "
     "over one shoulder and a small tin box in his other hand. The water was calm "
@@ -227,6 +255,32 @@ def build_image_pdf(path: Path) -> Path:
     return path
 
 
+def build_names_txt(path: Path) -> Path:
+    """A two-chapter Markdown book with 25 recurring names for M3 entity tests."""
+    first = (
+        "Santiago met Manolin at the harbour, and Perico was already there. "
+        "Martin and Rogelio carried the nets while Carlos argued with Dolores. "
+        "Pedro, Luis and Miguel watched from the wall, and Teresa called to Rosa. "
+        "Isabel and Antonio walked toward Havana, and Franco followed with Elisa."
+    )
+    second = (
+        "Marta and Javier reached Cojimar before Rafael and Sofia. "
+        "They spoke about Camaguey, Florida and Miami, then returned to Havana. "
+        "Santiago found Manolin again, and Perico told Martin that Rogelio had left. "
+        "Carlos, Dolores, Pedro, Luis and Miguel waited for Teresa and Rosa."
+    )
+    content = (
+        "# Chapter One\n\n"
+        f"{first}\n\n"
+        "The village was quiet that morning, and the water was grey.\n\n"
+        "# Chapter Two\n\n"
+        f"{second}\n\n"
+        "By evening the wind had changed, and everyone went home.\n"
+    )
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
 def build_structure_yaml(path: Path) -> Path:
     data = {
         "version": 1,
@@ -245,6 +299,7 @@ def build_all(directory: Path) -> dict[str, Path]:
         "epub": build_epub(directory / "book.epub"),
         "docx": build_docx(directory / "book.docx"),
         "txt": build_txt(directory / "book.md"),
+        "names": build_names_txt(directory / "names.md"),
         "pdf": build_pdf(directory / "book.pdf"),
         "image_pdf": build_image_pdf(directory / "image-only.pdf"),
         "structure": build_structure_yaml(directory / "structure.yaml"),

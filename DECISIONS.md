@@ -27,6 +27,18 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M2: The ASCII comma conversion ignores commas between Persian digits (so `1,234` keeps its separator) but still fixes list punctuation after a Persian digit.
 - M2: L19 is approximated from chapter HTML (every `href="#x"` needs an `id="x"` and every footnote segment a translation) until footnote target ids are modelled in M4.
 
+## M3 — analysis, brief and optional glossary
+- M3: `tj analyze --review-brief` (and `pipeline.analyze.brief_approval: manual`) writes the draft and exits 3 (paused), so the next command is explicit (`tj analyze --approve`); it never sits interactively.
+- M3: `--draft-only` stops after `brief.draft.yaml` and does not freeze even when approval is `auto`.
+- M3: An approved `brief.yaml` is reused on later `tj analyze` runs; `--only <chapter>` limits summaries/entities to that chapter but still uses the whole-book brief.
+- M3: Chapters over 8,000 tokens are summarized in two chunk calls, then P02 is called once more with both chunk summaries as the data source to merge them; if that merge call still fails schema validation, a deterministic union/join fallback is used.
+- M3: The deterministic proper-noun scan keeps capitalized tokens seen mid-sentence or at least twice, with a small English common-word blocklist; LLM entities are merged by `rapidfuzz` token-set ratio ≥ 90 and the most frequent surface wins.
+- M3: In `auto` mode only proposals at or above `glossary.auto_approve_min_confidence` are approved automatically; lower-confidence character/place entries stay `proposed` and are gate-1b blockers.
+- M3: `provided` mode parses YAML (`entries:`) or CSV (`en,fa[,kind,...]`), forces entries to `approved`, and writes `artifacts/glossary.yaml`; `sync` re-imports that artifact honoring each entry's status and marks DB entries missing from the artifact `deprecated` (it is the source of truth).
+- M3: Glossary suggestions are stored with `status=pending`; `tj glossary pending` lists them. Promotion into an approved entry stays a human action.
+- M3: `BookBrief.register` now uses `Field(...)`; without it Pydantic silently defaulted the field to the metaclass `register` method and omitted it from the JSON schema's required list.
+- M3: CLI offline runs can set `TARJOMAN_MOCK_FIXTURES=<dir>` to use `MockProvider`; the real provider remains the default.
+
 ## Model policy (product owner, 2026-11-05)
 - M3+: `deepseek-v4-pro` is never used. DeepSeek V4.1 Flash is the default draft/critic model (DeepSeek API, `DEEPSEEK_API_KEY`).
 - The separate quality/reviewer/judge model is `gpt-6-luna` via OpenRouter (`OPENROUTER_API_KEY`), configured per tier in `configs/models/deepseek.yaml`.
