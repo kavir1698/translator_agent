@@ -1,0 +1,38 @@
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("../fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("../fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+html { direction: rtl; }
+body { font-family: "Vazirmatn", "Noto Naskh Arabic", serif;
+       text-align: justify; text-justify: inter-word;
+       line-height: 1.9; hyphens: none; -epub-hyphens: none;
+       word-spacing: 0; letter-spacing: normal; }
+p { margin: 0; text-indent: 1.5em; }
+h1, h2, h3 { text-align: start; text-indent: 0; line-height: 1.6; }
+h2 + p, hr + p { text-indent: 0; }
+.verse { white-space: pre-line; text-indent: 0; }
+.ltr, code, .isbn { direction: ltr; unicode-bidi: isolate; text-align: left; }
+.endnotes { font-size: 0.9em; }
+
+.chapter-title { margin-top: 0; }
+.caption { text-indent: 0; font-style: italic; }
+.table { border-collapse: collapse; margin: 1em 0; }
+.table th, .table td { border: 1px solid currentColor; padding: 0.2em 0.5em; }
+blockquote { margin: 1em 0; }
+.endnotes ol { padding-inline-start: 1.5em; }
+.endnotes p { text-indent: 0; }
+.backlink { text-decoration: none; }
+.cover { margin: 0; padding: 0; text-align: center; }
+.cover img { max-width: 100%; max-height: 100%; }

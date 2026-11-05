@@ -69,6 +69,7 @@ Do **not** put the skill into the normative spec: it is a Kilo session setting, 
 - The riskiest code is `ingest/inline.py` (markup round-trip), `ingest/pdf_reader.py` (layout reconstruction) and `export/epub_writer.py` (RTL/OPF). Write their tests before their features.
 - `tests/fixtures/build.py` generates synthetic EPUB/DOCX/TXT/PDF fixtures (project-authored text). Do not download or ship third-party books.
 - After M4, run one real chapter through `deepseek-flash` (thinking off) before building M5+, to validate prompt quality and the real cost.
+- Known M8b limitation: DOCX footnotes are emitted as chapter endnotes because python-docx has no footnote API, and the optional LibreOffice PDF is readable but not print-ready.
 
 **What the agent can and cannot verify:** M0–M9 are testable offline with mock data. Real-provider smoke runs are manual and recorded in `DECISIONS.md`. Literary quality is screened by the judge and the MQM/BWS packets but **proven only by a human reader** — never claim it from CI.
 

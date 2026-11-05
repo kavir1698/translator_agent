@@ -1,0 +1,440 @@
+<!doctype html>
+<html dir="rtl" lang="fa">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>مرور ترجمه — {{ book_title }}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f4ef;
+      --panel: #ffffff;
+      --ink: #1f2328;
+      --muted: #6b7280;
+      --line: #d8d4cb;
+      --accent: #0f766e;
+      --danger: #b91c1c;
+      --warn: #b45309;
+      --chip: #e8f0ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+    header, section.filters, main { max-width: 1180px; margin: 0 auto 20px; }
+    header { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; }
+    .metrics { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: .95rem; }
+    .metrics strong { color: var(--ink); }
+    .filters {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 18px;
+      align-items: end;
+    }
+    .filters label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+    .filters input, .filters select {
+      font: inherit;
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+      min-width: 120px;
+    }
+    .filters .check { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 7px; }
+    button {
+      font: inherit;
+      padding: 7px 14px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.accept { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.work { border-color: var(--danger); color: var(--danger); }
+    .row {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+    .row.active { outline: 3px solid var(--accent); outline-offset: 1px; }
+    .row.done { opacity: .65; }
+    .row-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 10px; }
+    .seg-id { font-family: ui-monospace, Consolas, monospace; font-weight: 700; direction: ltr; unicode-bidi: embed; }
+    .pill { background: var(--chip); border-radius: 999px; padding: 1px 9px; font-size: .8rem; color: var(--muted); }
+    .pill.hot { background: #fde8e8; color: var(--danger); }
+    .source {
+      background: var(--bg);
+      border: 1px dashed var(--line);
+      border-radius: 9px;
+      padding: 9px 12px;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+      font-size: .9rem;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .ltr { direction: ltr; text-align: left; unicode-bidi: isolate; }
+    .editor { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    textarea.fa-edit {
+      width: 100%;
+      min-height: 150px;
+      font: inherit;
+      font-size: 1.02rem;
+      line-height: 1.9;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--bg);
+      color: var(--ink);
+      resize: vertical;
+    }
+    .preview {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 10px 12px;
+      background: var(--bg);
+      white-space: pre-wrap;
+      overflow: auto;
+      min-height: 150px;
+    }
+    .sentinel {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #3730a3;
+      border-radius: 5px;
+      padding: 0 4px;
+      margin: 0 1px;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: .78rem;
+      direction: ltr;
+      user-select: none;
+    }
+    .issues { list-style: none; margin: 12px 0 0; padding: 0; }
+    .issues li { border-top: 1px solid var(--line); padding: 8px 0; font-size: .9rem; }
+    .code { font-family: ui-monospace, Consolas, monospace; direction: ltr; unicode-bidi: embed; font-weight: 700; }
+    .sev { border-radius: 999px; padding: 0 8px; font-size: .76rem; margin-inline-end: 6px; }
+    .sev.critical, .sev.error { background: #fde8e8; color: var(--danger); }
+    .sev.warn { background: #fef3c7; color: var(--warn); }
+    .sev.info { background: var(--chip); color: var(--muted); }
+    .quote { color: var(--muted); font-size: .85rem; margin-top: 3px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; font-size: .88rem; }
+    .meta h3 { margin: 0 0 4px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+    .meta ul { margin: 0; padding-inline-start: 18px; }
+    .note { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+    .note input {
+      font: inherit;
+      flex: 1 1 320px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .hint { color: var(--muted); font-size: .85rem; margin-top: 10px; }
+    @media (max-width: 820px) {
+      .editor, .meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ book_title }}</h1>
+    <div class="metrics">
+      <span>پوشش: <strong>{{ coverage_pct }}</strong></span>
+      <span>پای‌بندی واژه‌نامه: <strong>{{ adherence_pct }}</strong>
+        ({{ matched_terms }} از {{ term_occurrences }})</span>
+      <span>مسائل باز: <strong>{{ severity_counts.critical + severity_counts.error + severity_counts.warn + severity_counts.info }}</strong>
+        (بحرانی {{ severity_counts.critical }} · خطا {{ severity_counts.error }} ·
+        هشدار {{ severity_counts.warn }} · اطلاعات {{ severity_counts.info }})</span>
+      <span>هزینه: <strong>${{ cost_usd }}</strong></span>
+      <span>پروفایل مدل: <strong>{{ model_profile }}</strong></span>
+      <span>پیکربندی مدل: <strong dir="ltr">{{ model_config }}</strong></span>
+      <span>نسخه‌های پرامپت: <strong dir="ltr">{{ prompt_versions | join(", ") if prompt_versions else "—" }}</strong></span>
+    </div>
+  </header>
+
+  <section class="filters" aria-label="فیلترها">
+    <label>فصل
+      <select id="filter-chapter">
+        <option value="">همه</option>
+        {% for chapter_value in rows | map(attribute="chapter") | unique | sort %}
+        <option value="{{ chapter_value }}">{{ chapter_value }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>شدت
+      <select id="filter-severity">
+        <option value="">همه</option>
+        <option value="critical">بحرانی</option>
+        <option value="error">خطا</option>
+        <option value="warn">هشدار</option>
+        <option value="info">اطلاعات</option>
+      </select>
+    </label>
+    <label>کد مسئله
+      <select id="filter-code">
+        <option value="">همه</option>
+        {% for code_value in all_codes %}
+        <option value="{{ code_value }}">{{ code_value }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>کمینه ریسک
+      <input id="filter-risk" type="number" min="0" max="100" step="1" value="0">
+    </label>
+    <label class="check">
+      <input id="filter-only" type="checkbox"> فقط علامت‌خورده
+    </label>
+    <label>جستجو
+      <input id="filter-search" type="search" placeholder="متن مبدأ یا ترجمه">
+    </label>
+    <label>ویرایشگر
+      <input id="reviewer" type="text" value="editor">
+    </label>
+    <button id="download-corrections" class="primary" type="button">دانلود corrections.jsonl</button>
+  </section>
+
+  <main id="rows">
+    {% for row in rows %}
+    <article class="row" data-segment-id="{{ row.segment_id }}" data-chapter="{{ row.chapter }}"
+             data-risk="{{ row.risk }}" data-codes="{{ row.codes }}"
+             data-severities="{{ row.severities }}"
+             data-version="{{ row.translation_version if row.translation_version is not none else '' }}"
+             data-flagged="{{ 'true' if row.flagged else 'false' }}">
+      <div class="row-head">
+        <span class="seg-id">{{ row.segment_id }}</span>
+        <span class="pill">فصل {{ row.chapter }}</span>
+        <span class="pill {{ 'hot' if row.risk >= 55 else '' }}">ریسک {{ row.risk }}</span>
+        {% for code in row.codes.split("|") if code %}
+        <span class="pill">{{ code }}</span>
+        {% endfor %}
+      </div>
+      <div class="source ltr" dir="ltr">{{ row.source_html }}</div>
+      <div class="editor">
+        <textarea class="fa-edit" dir="rtl" spellcheck="false" aria-label="ترجمهٔ جاری">{{ row.fa_markup }}</textarea>
+        <div class="preview" dir="rtl" aria-label="پیش‌نمایش">{{ row.preview }}</div>
+      </div>
+      {% if row.issues %}
+      <ul class="issues">
+        {% for issue in row.issues %}
+        <li>
+          <span class="sev {{ issue.severity }}">{{ issue.severity }}</span>
+          <span class="code">{{ issue.code }}</span>
+          — {{ issue.message }}
+          {% if issue.quote_source %}<div class="quote ltr" dir="ltr">منبع: {{ issue.quote_source }}</div>{% endif %}
+          {% if issue.quote_target %}<div class="quote" dir="rtl">ترجمه: {{ issue.quote_target }}</div>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <div class="meta">
+        <div>
+          <h3>یادداشت‌های مترجم</h3>
+          {% if row.notes %}
+          <ul>
+            {% for key, value in row.notes.items() %}
+            <li><strong>{{ key }}:</strong> {{ value }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <span class="hint">بدون یادداشت</span>
+          {% endif %}
+        </div>
+        <div>
+          <h3>واژه‌های واژه‌نامه در این پاراگراف</h3>
+          {% if row.terms %}
+          <ul>
+            {% for term in row.terms %}
+            <li>{{ term.en }} → {{ term.fa }}{% if term.kind %} <span class="pill">{{ term.kind }}</span>{% endif %}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <span class="hint">واژه‌نامه‌ای در این پاراگراف نیست</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="note">
+        <input class="row-note" type="text" placeholder="یادداشت این اصلاح">
+        <div class="actions">
+          <button class="accept" type="button">Accept</button>
+          <button class="work" type="button">Needs work</button>
+          <button class="next" type="button">Next</button>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+      var rows = Array.prototype.slice.call(document.querySelectorAll(".row"));
+      var corrections = [];
+      var active = -1;
+      var chapter = document.getElementById("filter-chapter");
+      var severity = document.getElementById("filter-severity");
+      var code = document.getElementById("filter-code");
+      var risk = document.getElementById("filter-risk");
+      var only = document.getElementById("filter-only");
+      var search = document.getElementById("filter-search");
+      var reviewerInput = document.getElementById("reviewer");
+
+      function hasValue(value, needle) {
+        return (value || "").split("|").indexOf(needle) !== -1;
+      }
+
+      function visible(row) {
+        if (chapter.value && row.dataset.chapter !== chapter.value) { return false; }
+        if (severity.value && !hasValue(row.dataset.severities, severity.value)) { return false; }
+        if (code.value && !hasValue(row.dataset.codes, code.value)) { return false; }
+        if (risk.value && Number(row.dataset.risk) < Number(risk.value)) { return false; }
+        if (only.checked && row.dataset.flagged !== "true") { return false; }
+        if (search.value) {
+          var needle = search.value.toLowerCase();
+          if (row.textContent.toLowerCase().indexOf(needle) === -1) { return false; }
+        }
+        return true;
+      }
+
+      function applyFilters() {
+        rows.forEach(function (row) {
+          row.style.display = visible(row) ? "" : "none";
+        });
+        if (active >= 0 && (rows[active].style.display === "none")) {
+          active = -1;
+        }
+      }
+
+      function move(delta) {
+        var shown = [];
+        rows.forEach(function (row, index) {
+          if (row.style.display !== "none") { shown.push(index); }
+        });
+        if (!shown.length) { return; }
+        var position = shown.indexOf(active);
+        if (position === -1) {
+          position = delta > 0 ? 0 : shown.length - 1;
+        } else {
+          position = Math.max(0, Math.min(shown.length - 1, position + delta));
+        }
+        active = shown[position];
+        rows.forEach(function (row, index) {
+          row.classList.toggle("active", index === active);
+        });
+        rows[active].scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+
+      function reviewer() {
+        return (reviewerInput.value || "").trim() || "editor";
+      }
+
+      function renderPreview(row) {
+        var value = row.querySelector("textarea.fa-edit").value;
+        var token = /⟨\/?\d+⟩|⟦\/?\d+⟧|\[\[#\d+\]\]|\[\[\/\d+\]\]/g;
+        var preview = row.querySelector(".preview");
+        var fragment = document.createDocumentFragment();
+        var position = 0;
+        var match;
+        while ((match = token.exec(value)) !== null) {
+          if (match.index > position) {
+            fragment.appendChild(document.createTextNode(value.slice(position, match.index)));
+          }
+          var chip = document.createElement("span");
+          chip.className = "sentinel";
+          chip.textContent = match[0];
+          fragment.appendChild(chip);
+          position = token.lastIndex;
+        }
+        if (position < value.length) {
+          fragment.appendChild(document.createTextNode(value.slice(position)));
+        }
+        preview.replaceChildren(fragment);
+      }
+
+      function record(row, action) {
+        var segmentId = row.dataset.segmentId;
+        if (!segmentId) { return; }
+        var note = (row.querySelector(".row-note").value || "").trim();
+        var item = { segment_id: segmentId, action: action };
+        if (action === "accept") {
+          var editor = row.querySelector("textarea.fa-edit");
+          if (!editor.value.trim()) {
+            window.alert("Cannot accept an empty translation.");
+            return;
+          }
+          item.fa_markup = editor.value;
+        }
+        var version = row.dataset.version;
+        if (version) { item.translation_version = Number(version); }
+        item.note = note;
+        item.reviewer = reviewer();
+        corrections.push(item);
+        row.classList.add("done");
+      }
+
+      rows.forEach(function (row, index) {
+        row.querySelector(".accept").addEventListener("click", function () {
+          record(row, "accept");
+        });
+        row.querySelector(".work").addEventListener("click", function () {
+          record(row, "needs_work");
+        });
+        row.querySelector(".next").addEventListener("click", function () {
+          active = index;
+          move(1);
+        });
+        row.querySelector("textarea.fa-edit").addEventListener("input", function () {
+          renderPreview(row);
+        });
+      });
+
+      [chapter, severity, code, risk, only, search].forEach(function (control) {
+        control.addEventListener("input", applyFilters);
+        control.addEventListener("change", applyFilters);
+      });
+
+      document.getElementById("download-corrections").addEventListener("click", function () {
+        var payload = corrections.map(function (item) {
+          return JSON.stringify(item);
+        }).join("\n");
+        if (payload) { payload += "\n"; }
+        var blob = new Blob([payload], { type: "application/x-ndjson" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "corrections.jsonl";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      });
+
+      window.addEventListener("keydown", function (event) {
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") { return; }
+        var tag = (document.activeElement && document.activeElement.tagName) || "";
+        if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") { return; }
+        event.preventDefault();
+        move(event.key === "ArrowDown" ? 1 : -1);
+      });
+
+      applyFilters();
+    }());
+  </script>
+</body>
+</html>

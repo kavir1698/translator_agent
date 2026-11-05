@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id"
+         xml:lang="fa" dir="rtl">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">{{ identifier }}</dc:identifier>
+    <dc:title>{{ title }}</dc:title>
+    <dc:language>{{ language }}</dc:language>
+{% if author %}    <dc:creator>{{ author }}</dc:creator>
+{% endif %}{% if translator %}    <dc:contributor>{{ translator }}</dc:contributor>
+{% endif %}{% if source %}    <dc:source>{{ source }}</dc:source>
+{% endif %}{% if rights %}    <dc:rights>{{ rights }}</dc:rights>
+{% endif %}{% if publisher %}    <dc:publisher>{{ publisher }}</dc:publisher>
+{% endif %}    <meta property="dcterms:modified">{{ modified }}</meta>
+{% for item in accessibility %}    <meta property="{{ item.property }}">{{ item.value }}</meta>
+{% endfor %}  </metadata>
+  <manifest>
+{% for item in manifest %}    <item id="{{ item.id }}" href="{{ item.href }}" media-type="{{ item.media_type }}"{% if item.properties %} properties="{{ item.properties }}"{% endif %}/>
+{% endfor %}  </manifest>
+  <spine page-progression-direction="rtl">
+{% for idref in spine %}    <itemref idref="{{ idref }}"/>
+{% endfor %}  </spine>
+</package>

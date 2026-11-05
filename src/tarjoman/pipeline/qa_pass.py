@@ -49,6 +49,7 @@ class QaOptions:
     group: str | None = None
     stale_glossary: bool = False
     json_output: bool = False
+    preserve_flags: bool = False
 
 
 @dataclass
@@ -154,7 +155,8 @@ def _resolve_stale(
         SELECT i.id, i.dedupe_key FROM issues i
         LEFT JOIN segments s ON s.id = i.segment_id
         JOIN chapters c ON c.id = COALESCE(i.chapter_id, s.chapter_id)
-        WHERE i.stage = 'qa' AND i.status = 'open' AND c.book_id = ?{clause}
+        WHERE i.stage = 'qa' AND i.status = 'open' AND i.code NOT LIKE 'REVIEW_%'
+              AND c.book_id = ?{clause}
         """,
         tuple(params),
     ):
@@ -437,7 +439,9 @@ def run_qa(
                 )
         flags_rows.sort(key=lambda row: (-int(row["risk_score"]), str(row["segment_id"])))
         result.flags = len(flags_rows)
-        result.flags_path = _write_flags(base / "review" / "flags.csv", flags_rows)
+        result.flags_path = _write_flags(
+            base / "review" / "flags.csv", flags_rows, preserve=options.preserve_flags
+        )
         result.rows = flags_rows
         in_scope = [
             segment for segment in book_segments if str(segment["status"]) != SegmentStatus.SKIPPED
@@ -495,24 +499,62 @@ def _flag_row(
     }
 
 
-def _write_flags(path: Path, rows: list[dict[str, Any]]) -> Path:
+FLAGS_COLUMNS = [
+    "segment_id",
+    "chapter",
+    "risk_score",
+    "codes",
+    "severities",
+    "source_excerpt",
+    "fa_excerpt",
+    "sample_flag",
+    "reviewed",
+    "reviewer_note",
+]
+
+
+def build_flag_row(
+    segment: Any,
+    risk: int,
+    issues: list[Any],
+    *,
+    chapter_idx: int,
+    fa_text: str = "",
+    sample: bool = False,
+) -> dict[str, Any]:
+    return _flag_row(
+        segment,
+        risk,
+        issues,
+        chapter_idx=chapter_idx,
+        fa_text=fa_text,
+        sample=sample,
+    )
+
+
+def _write_flags(
+    path: Path, rows: list[dict[str, Any]], *, preserve: bool = False
+) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    columns = [
-        "segment_id",
-        "chapter",
-        "risk_score",
-        "codes",
-        "severities",
-        "source_excerpt",
-        "fa_excerpt",
-        "sample_flag",
-        "reviewed",
-        "reviewer_note",
-    ]
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns)
+    if preserve and path.is_file():
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            existing = [dict(row) for row in csv.DictReader(handle)]
+        by_id = {str(row.get("segment_id", "")): row for row in existing}
+        merged: list[dict[str, Any]] = []
+        for row in rows:
+            previous = by_id.pop(str(row.get("segment_id", "")), None)
+            if previous is not None and previous.get("reviewed") == "true":
+                row["reviewed"] = "true"
+                row["reviewer_note"] = previous.get("reviewer_note", "")
+            merged.append(row)
+        merged.extend(by_id.values())
+        rows = merged
+    temp = path.with_name(f"{path.name}.tmp")
+    with temp.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FLAGS_COLUMNS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
+    temp.replace(path)
     return path
 
 

@@ -12,6 +12,7 @@ from . import (
     analyze_cmd,
     doctor_cmd,
     estimate_cmd,
+    export_cmd,
     init_cmd,
     inspect_cmd,
     retranslate_cmd,
@@ -20,6 +21,7 @@ from . import (
 from .anchors_cmd import anchors_app
 from .glossary_cmd import glossary_app
 from .qa_cmd import qa_app
+from .review_cmd import review_app
 
 app = typer.Typer(
     name="tj",
@@ -50,9 +52,11 @@ app.command("inspect")(inspect_cmd.inspect)
 app.command("analyze")(analyze_cmd.analyze)
 app.command("translate")(translate_cmd.translate)
 app.command("retranslate")(retranslate_cmd.retranslate)
+app.command("export")(export_cmd.export)
 app.add_typer(glossary_app, name="glossary")
 app.add_typer(qa_app, name="qa")
 app.add_typer(anchors_app, name="anchors")
+app.add_typer(review_app, name="review")
 
 
 if __name__ == "__main__":

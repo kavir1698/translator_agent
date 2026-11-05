@@ -12,6 +12,7 @@ book:
   target_lang: fa              # fa-IR content; dc:language is "fa"
   rights_basis: user_supplied  # informational only: public_domain | licensed | user_supplied
   translator: "Tarjoman"
+  title_fa: null               # Persian dc:title; set this for an all-Persian export
   cover: null                  # path override; default uses source cover
 
 provider:

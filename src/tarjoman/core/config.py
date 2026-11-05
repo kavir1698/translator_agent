@@ -33,6 +33,7 @@ class BookConfig(_Section):
     target_lang: str = "fa"
     rights_basis: Literal["public_domain", "licensed", "user_supplied"] = "user_supplied"
     translator: str = "Tarjoman"
+    title_fa: str | None = None
     cover: str | None = None
 
 
