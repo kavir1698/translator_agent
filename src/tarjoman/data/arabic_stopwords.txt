@@ -1,0 +1,19 @@
+# Unambiguous Arabic-only function words (L04). Persian homographs are excluded.
+هذا
+هذه
+ذلك
+تلك
+الذي
+التي
+الذين
+اللذان
+اللتان
+كان
+كانت
+لم
+لن
+هو
+هي
+أنا
+نحن
+أنتم

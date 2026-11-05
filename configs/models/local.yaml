@@ -1,0 +1,21 @@
+# Optional local OpenAI-compatible endpoint (Ollama / vLLM).
+provider: openai
+base_url: http://localhost:11434/v1
+
+quality:
+  model: "qwen2.5:32b"
+  temperature: null
+  max_output_tokens: 16384
+
+balanced:
+  model: "qwen2.5:14b"
+  temperature: null
+  max_output_tokens: 16384
+
+cheap:
+  model: "qwen2.5:7b"
+  temperature: null
+  max_output_tokens: 8192
+
+thinking: disabled
+pricing_usd_per_mtok: {cache_hit_input: 0.0, input: 0.0, output: 0.0}

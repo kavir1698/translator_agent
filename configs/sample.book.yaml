@@ -1,0 +1,16 @@
+# A complete per-book override, copied to books/<slug>/config.yaml when needed.
+book:
+  rights_basis: user_supplied
+  translator: "Tarjoman"
+
+glossary:
+  mode: "off"
+
+pipeline:
+  cost_mode: standard
+
+budget:
+  max_usd: 10
+
+export:
+  formats: [epub, docx, md]

@@ -1,0 +1,108 @@
+# Tarjoman configuration — every key is required to exist in this file (defaults),
+# book configs override a subset. Values shown are the defaults.
+
+project:
+  name: tarjoman
+  books_dir: books
+  timezone: UTC
+
+book:
+  slug: null                   # derived from title if omitted
+  source_lang: en
+  target_lang: fa              # fa-IR content; dc:language is "fa"
+  rights_basis: user_supplied  # informational only: public_domain | licensed | user_supplied
+  translator: "Tarjoman"
+  cover: null                  # path override; default uses source cover
+
+provider:
+  default: deepseek
+  profile: deepseek            # deepseek | local | custom
+  models: configs/models/deepseek.yaml
+  thinking: disabled           # MUST be disabled by default (see plan 4.5/9.6)
+  thinking_overrides: {}       # per-agent experiment, e.g. {A6: low, A8: low}; requires M10 evidence
+  reasoning_allowance: 2048    # extra output-token headroom when thinking is enabled for an agent
+  tariff: auto                 # auto | peak | offpeak; estimate always prints both
+  timeout_s: 180
+  max_retries: 4
+  max_inflight: 4
+  fallbacks: []
+  log_prompts: false
+
+glossary:
+  mode: "off"                    # off (default) | provided | auto
+  path: null                   # required when mode=provided (yaml/csv with en,fa[,kind])
+  approval: auto               # auto | manual (manual gates characters/places)
+  auto_approve_min_confidence: 0.90
+
+pipeline:
+  cost_mode: auto              # auto | economy | standard | quality (plan 3.6)
+  window:
+    max_paragraphs: 8
+    max_source_tokens: 900
+    min_paragraphs: 4
+    overlap_paragraphs: 2      # context only, never retranslated
+  critics:
+    fidelity: true
+    style: true
+    max_revision_rounds: 1
+    force_fidelity_on_length_outlier: true
+  passes:
+    readthrough: true
+    backtranslate: false       # post-v1 only
+    consistency_audit: true
+  analyze:
+    sample_token_budget: 18000
+    summary_model_tier: cheap
+    brief_approval: auto       # auto | manual
+  resume: true
+
+persian:
+  digits: persian              # persian | ascii (ascii is required for technical books)
+  keep_diacritics: false
+  zwnj_repair: high_precision  # off | high_precision
+  ellipsis: unicode            # unicode => … (N06); ascii => ...
+  auto_fix: [digits, punctuation, whitespace]
+
+review:
+  enabled: true                # generates report + flags; never blocks export
+  flag_threshold: 55
+  sample_fraction: 0.05
+  min_coverage_for_export: 1.0
+
+budget:
+  max_usd: 10                  # product-owner ceiling per book
+  abort_on_exceed: true
+  warn_at_fraction: 0.8
+
+export:
+  formats: [epub, docx, md, txt]
+  pdf: false                   # requires LibreOffice; see plan 6.8.5
+  bilingual: false             # optional side product
+  epub:
+    rtl: true
+    embed_fonts: true
+    font_body: Vazirmatn
+    endnotes_per_chapter: true
+    validate_with_epubcheck: true
+  docx:
+    page: A5
+    endnotes: true
+  markdown:
+    front_matter: true
+  bilingual_html:
+    include_source: true
+
+eval:
+  golden_dir: tests/golden
+  calibration_dir: eval/calibration
+  judge_model: gpt-6-luna # REQUIRED; different model from the translator (same provider caveat)
+  samples_per_item: 3
+  temperature: 0.2             # sampling needs variance; three temperature-0 samples are identical
+
+logging:
+  level: INFO
+  json_logs: true
+  console: rich
+
+concurrency:
+  parallel_chapters: 1         # 1 = reading order (recommended); >1 trades coherence for speed

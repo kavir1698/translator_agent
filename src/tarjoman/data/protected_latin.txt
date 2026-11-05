@@ -1,0 +1,22 @@
+# Latin strings that legitimately stay Latin (L10 whitelist). Case-insensitive.
+ISBN
+ISSN
+URL
+http
+https
+www
+FBI
+CIA
+NASA
+PDF
+EPUB
+DOCX
+HTML
+AI
+DNA
+OK
+TV
+CD
+DVD
+UNESCO
+NATO

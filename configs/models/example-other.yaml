@@ -1,0 +1,21 @@
+# Template for another provider. Copy, fill in, and point provider.models at it.
+provider: openai
+base_url: https://api.example.com/v1
+
+quality:
+  model: "provider/best-model"
+  temperature: null
+  max_output_tokens: 32768
+
+balanced:
+  model: "provider/default-model"
+  temperature: null
+  max_output_tokens: 32768
+
+cheap:
+  model: "provider/small-model"
+  temperature: null
+  max_output_tokens: 16384
+
+thinking: disabled
+pricing_usd_per_mtok: {cache_hit_input: 0.0, input: 0.0, output: 0.0}

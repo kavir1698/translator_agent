@@ -1,0 +1,31 @@
+# Default model profile.
+# Draft/critics default to DeepSeek V4.1 Flash via the DeepSeek API.
+# The separate quality/judge model is GPT-6 Luna via OpenRouter (never deepseek-v4-pro).
+provider: deepseek
+base_url: https://api.deepseek.com
+
+quality:
+  model: "gpt-6-luna"
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  api_key_env: OPENROUTER_API_KEY
+  temperature: null
+  max_output_tokens: 32768
+  # Placeholder pricing for estimation only; replace with OpenRouter's current rate.
+  pricing_usd_per_mtok: {cache_hit_input: 0.024, input: 1.20, output: 4.80}
+
+balanced:
+  model: "deepseek-flash"
+  temperature: null
+  max_output_tokens: 32768
+
+cheap:
+  model: "deepseek-flash"
+  temperature: null
+  max_output_tokens: 16384
+
+thinking: disabled                     # extra_body {"thinking":{"type":"disabled"}}
+pricing_usd_per_mtok:                  # off-peak; peak doubles (01:00-04:00, 06:00-10:00 UTC, Mon-Fri)
+  cache_hit_input: 0.003
+  input: 0.15
+  output: 0.60
