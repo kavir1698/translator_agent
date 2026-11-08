@@ -34,6 +34,20 @@ def _safe_read(archive: zipfile.ZipFile, name: str, budget: dict[str, int]) -> b
     return archive.read(name)
 
 
+def _parse_html(raw: bytes) -> etree._Element:
+    """Parse one XHTML document, preferring UTF-8 when the bytes are valid.
+
+    lxml's HTML parser guesses Latin-1 when non-ASCII bytes appear before the
+    document's charset declaration (for example in ``<title>``), which mangles
+    otherwise valid UTF-8 text.
+    """
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return lxml_html.document_fromstring(raw)
+    return lxml_html.document_fromstring(raw, parser=lxml_html.HTMLParser(encoding="utf-8"))
+
+
 def _local(element: etree._Element) -> str:
     tag = str(element.tag)
     return tag.rsplit("}", 1)[-1].lower() if "}" in tag else tag.lower()
@@ -123,7 +137,7 @@ def read_epub(path: str | Path) -> IngestResult:
                 continue
             raw = _safe_read(archive, href, budget)
             try:
-                tree = lxml_html.document_fromstring(raw)
+                tree = _parse_html(raw)
             except (etree.ParserError, ValueError) as exc:
                 skipped.append({"href": href, "reason": str(exc)})
                 continue

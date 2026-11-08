@@ -29,6 +29,19 @@ def _assert_roundtrip(result) -> None:
         assert block.rebuild() == block.html, f"{block.kind}: {block.text[:60]}"
 
 
+def test_epub_reader_parses_utf8_before_charset_declaration():
+    from tarjoman.ingest.epub_reader import _parse_html
+
+    raw = (
+        "<html><head><title>Café “quoted”</title><meta charset=\"utf-8\"/></head>"
+        "<body><p>Café “quoted”</p></body></html>"
+    ).encode()
+
+    tree = _parse_html(raw)
+
+    assert tree.find(".//p").text_content() == "Café “quoted”"
+
+
 def test_iter_blocks_descends_wrapper_containers():
     body = lxml_html.document_fromstring(
         "<html><body><div class='wrapper'><div class='pad'>"
