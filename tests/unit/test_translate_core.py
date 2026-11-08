@@ -85,6 +85,55 @@ def test_dry_run_makes_zero_calls(isolated_home: Path, fixtures: dict[str, Path]
     assert result.estimate["calls"] > 0
 
 
+def test_progress_callback_reports_live_events(
+    isolated_home: Path, fixtures: dict[str, Path]
+) -> None:
+    make_workspace(isolated_home, fixtures)
+    events = []
+    result = run_translate(
+        root=isolated_home,
+        slug="test-book",
+        settings=load_settings(root=isolated_home),
+        profile=_profile(isolated_home),
+        provider=SmartProvider(),
+        options=TranslateOptions(chapters=[1], cost_mode="standard"),
+        progress=events.append,
+    )
+    assert result.coverage == 1.0
+    kinds = [event.kind for event in events]
+    assert kinds[0] == "start"
+    assert "window_done" in kinds
+    assert "chapter_done" in kinds
+    assert kinds[-1] == "finish"
+    assert events[0].chapters_total == 1
+    assert events[0].windows_total > 0
+    assert events[-1].status == "completed"
+    window_done = next(event for event in events if event.kind == "window_done")
+    assert window_done.windows_done >= 1
+    assert window_done.chapter_windows >= 1
+
+
+def test_broken_progress_callback_does_not_abort_translation(
+    isolated_home: Path, fixtures: dict[str, Path]
+) -> None:
+    make_workspace(isolated_home, fixtures)
+
+    def broken(_event: object) -> None:
+        raise RuntimeError("display exploded")
+
+    result = run_translate(
+        root=isolated_home,
+        slug="test-book",
+        settings=load_settings(root=isolated_home),
+        profile=_profile(isolated_home),
+        provider=SmartProvider(),
+        options=TranslateOptions(chapters=[1], cost_mode="standard"),
+        progress=broken,
+    )
+    assert result.coverage == 1.0
+    assert result.error_issues == 0
+
+
 def test_qa_writes_flags_and_is_idempotent(
     isolated_home: Path, fixtures: dict[str, Path]
 ) -> None:

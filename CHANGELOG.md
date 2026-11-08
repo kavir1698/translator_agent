@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Live translation progress:** `tj translate` and `tj retranslate` render a
+  live progress bar on stderr with the current chapter and phase
+  (drafting/reviewing/revising/repairing/checking), windows completed, segments
+  translated and cost so far. It is enabled automatically in an interactive
+  terminal and can be forced with `--progress` or silenced with `--no-progress`.
+  Pipeline callers can subscribe via the new `progress=` callback on
+  `run_translate`; display failures never abort a run.
+
 ## [1.0.0] - 2026-11-05
 
 First v1 release: an offline-verified, local English → Iranian Persian literary

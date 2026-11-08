@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Sequence
+import threading
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -70,6 +71,32 @@ from .risk import compute_risk
 from .window import Window, plan_hash, plan_windows, todo_segments
 
 CRITIC_AGENTS = {"A6", "A7", "A8"}
+
+
+@dataclass
+class ProgressEvent:
+    """A translation milestone for a live status display.
+
+    Counters are cumulative for the run; ``phase`` is the current work phase of
+    the window being processed (drafting, reviewing, revising, repairing, checking).
+    """
+
+    kind: str
+    chapter_idx: int | None = None
+    chapter_position: int | None = None
+    chapters_done: int = 0
+    chapters_total: int = 0
+    window_position: int | None = None
+    chapter_windows: int = 0
+    windows_done: int = 0
+    windows_total: int = 0
+    segments_done: int = 0
+    cost_usd: float = 0.0
+    phase: str | None = None
+    status: str = "completed"
+
+
+ProgressCallback = Callable[[ProgressEvent], None]
 
 
 @dataclass
@@ -143,6 +170,22 @@ class _Run:
     paused: bool = False
     stop: bool = False
     warnings: list[str] = field(default_factory=list)
+    progress: ProgressCallback | None = None
+    progress_status: str = "completed"
+    progress_windows_done: int = 0
+    progress_chapters_done: int = 0
+    progress_segments_done: int = 0
+    progress_lock: threading.Lock = field(default_factory=threading.Lock)
+
+    def send_progress(self, event: ProgressEvent) -> None:
+        """Never let a broken display abort a paid translation run."""
+        callback = self.progress
+        if callback is None:
+            return
+        try:
+            callback(event)
+        except Exception:  # noqa: BLE001 - UI failures are not run failures
+            self.progress = None
 
     def tier(self, agent: str) -> Any:
         if agent in CRITIC_AGENTS and self.mode == "quality":
@@ -163,6 +206,82 @@ class _Run:
                 "then run `tj translate` again"
             ),
         )
+
+
+def _progress_start(run: _Run, *, chapters: int, windows: int) -> None:
+    run.send_progress(
+        ProgressEvent(kind="start", chapters_total=chapters, windows_total=windows)
+    )
+
+
+def _progress_chapter_start(run: _Run, chapter: Any, *, position: int, total: int) -> None:
+    run.send_progress(
+        ProgressEvent(
+            kind="chapter_start",
+            chapter_idx=int(chapter["idx"]),
+            chapter_position=position,
+            chapters_total=total,
+        )
+    )
+
+
+def _progress_phase(run: _Run, chapter: Any, phase: str) -> None:
+    run.send_progress(
+        ProgressEvent(kind="phase", chapter_idx=int(chapter["idx"]), phase=phase)
+    )
+
+
+def _progress_window_done(
+    run: _Run, chapter: Any, *, position: int, windows: int, segments: int
+) -> None:
+    with run.progress_lock:
+        run.progress_windows_done += 1
+        run.progress_segments_done += segments
+        windows_done = run.progress_windows_done
+        segments_done = run.progress_segments_done
+    run.send_progress(
+        ProgressEvent(
+            kind="window_done",
+            chapter_idx=int(chapter["idx"]),
+            window_position=position,
+            chapter_windows=windows,
+            windows_done=windows_done,
+            segments_done=segments_done,
+            cost_usd=run.guard.spent_usd,
+        )
+    )
+
+
+def _progress_chapter_done(run: _Run, chapter: Any, *, total: int) -> None:
+    with run.progress_lock:
+        run.progress_chapters_done += 1
+        chapters_done = run.progress_chapters_done
+        segments_done = run.progress_segments_done
+    run.send_progress(
+        ProgressEvent(
+            kind="chapter_done",
+            chapter_idx=int(chapter["idx"]),
+            chapters_done=chapters_done,
+            chapters_total=total,
+            segments_done=segments_done,
+            cost_usd=run.guard.spent_usd,
+        )
+    )
+
+
+def _progress_finish(run: _Run) -> None:
+    with run.progress_lock:
+        windows_done = run.progress_windows_done
+        segments_done = run.progress_segments_done
+    run.send_progress(
+        ProgressEvent(
+            kind="finish",
+            windows_done=windows_done,
+            segments_done=segments_done,
+            cost_usd=run.guard.spent_usd,
+            status=run.progress_status,
+        )
+    )
 
 
 def _nodes(segment: Any) -> list[dict[str, Any]]:
@@ -805,6 +924,7 @@ def _process_window(
         prev_translations=prev_translations,
     )
 
+    _progress_phase(run, chapter, "drafting")
     translator = Translator()
     outcome = translator.translate(
         provider=run.provider,
@@ -869,6 +989,7 @@ def _process_window(
         )
 
     run.check_budget(source_tokens=source_tokens)
+    _progress_phase(run, chapter, "reviewing")
     findings: list[dict[str, Any]] = []
     fidelity_needed = any(
         issue.code == "L08" and str(issue.severity) == Severity.ERROR
@@ -952,6 +1073,7 @@ def _process_window(
             )
     _persist_agent_issues(run, int(chapter["id"]), findings)
 
+    _progress_phase(run, chapter, "revising")
     actionable = [
         finding
         for finding in findings
@@ -1009,6 +1131,7 @@ def _process_window(
             _resolve_critique_issues(run, str(segment["id"]))
 
     # Deterministic repair ladder: up to two rounds for segments with lint errors.
+    _progress_phase(run, chapter, "repairing")
     for _ in range(2):
         translations = _current_map(run.db, window.segments)
         lint_segments, lint_translations = _lint_objects(chapter_segments, translations)
@@ -1092,6 +1215,7 @@ def _process_window(
             )
             _resolve_critique_issues(run, str(segment["id"]))
 
+    _progress_phase(run, chapter, "checking")
     translations = _current_map(run.db, window.segments)
     _window_lint(run, window, chapter_segments, translations)
     for segment in todo:
@@ -1105,7 +1229,9 @@ def _process_window(
     return processed, failures
 
 
-def _process_chapter(run: _Run, chapter: Any) -> dict[str, Any]:
+def _process_chapter(
+    run: _Run, chapter: Any, *, position: int = 1, total: int = 1
+) -> dict[str, Any]:
     chapter_id = int(chapter["id"])
     chapter_segments = run.db.segments(chapter_id=chapter_id)
     if not any(str(segment["status"]) != SegmentStatus.SKIPPED for segment in chapter_segments):
@@ -1124,6 +1250,7 @@ def _process_chapter(run: _Run, chapter: Any) -> dict[str, Any]:
         windows = [window for window in windows if window.id in allowed_windows]
     if not windows:
         return {"chapter": int(chapter["idx"]), "windows": 0, "segments": 0}
+    _progress_chapter_start(run, chapter, position=position, total=total)
     current_status = str(chapter["status"])
     if current_status not in {
         ChapterStatus.TRANSLATED,
@@ -1157,6 +1284,9 @@ def _process_chapter(run: _Run, chapter: Any) -> dict[str, Any]:
             if processed:
                 processed_windows += 1
                 run.stats["windows"] = int(run.stats.get("windows", 0)) + 1
+            _progress_window_done(
+                run, chapter, position=index, windows=len(windows), segments=processed
+            )
             if index % 20 == 0:
                 _refresh_rolling_summary(run, chapter)
             run.db.update_run(
@@ -1173,6 +1303,8 @@ def _process_chapter(run: _Run, chapter: Any) -> dict[str, Any]:
     except BudgetPaused:
         run.paused = True
         raise
+    if not run.paused:
+        _progress_chapter_done(run, chapter, total=total)
     _refresh_rolling_summary(run, chapter)
     latest_chapter = run.db.get_chapter(chapter_id)
     if latest_chapter is not None and latest_chapter["status"] == ChapterStatus.TRANSLATING:
@@ -1626,6 +1758,7 @@ def run_translate(
     profile: ModelProfile,
     provider: Provider,
     options: TranslateOptions | None = None,
+    progress: ProgressCallback | None = None,
 ) -> TranslateResult:
     options = options or TranslateOptions()
     run: _Run | None = None
@@ -1638,6 +1771,7 @@ def run_translate(
             provider=provider,
             options=options,
         )
+        run.progress = progress
         chapters = _select_chapters(run)
         _warn_missing_anchors(run, chapters)
         result.warnings = list(run.warnings)
@@ -1715,6 +1849,14 @@ def run_translate(
             result.coverage = 0.0
             return result
 
+        progress_windows = all_windows
+        if options.windows:
+            allowed_windows = set(options.windows)
+            progress_windows = [
+                window for window in all_windows if window.id in allowed_windows
+            ]
+        _progress_start(run, chapters=len(chapters), windows=len(progress_windows))
+
         result.chapters = len(chapters)
         run.stats["chapter_ids"] = [int(chapter["id"]) for chapter in chapters]
         if options.parallel_chapters > 1 and len(chapters) > 1:
@@ -1730,7 +1872,16 @@ def run_translate(
                 "slightly lower than reading-order translation"
             )
             with ThreadPoolExecutor(max_workers=options.parallel_chapters) as pool:
-                futures = {pool.submit(_process_chapter, run, chapter): chapter for chapter in chapters}
+                futures = {
+                    pool.submit(
+                        _process_chapter,
+                        run,
+                        chapter,
+                        position=index,
+                        total=len(chapters),
+                    ): chapter
+                    for index, chapter in enumerate(chapters, start=1)
+                }
                 for future in as_completed(futures):
                     chapter = futures[future]
                     try:
@@ -1745,11 +1896,13 @@ def run_translate(
                     result.segments_translated += int(stats.get("segments", 0))
                     result.windows += int(stats.get("windows", 0))
         else:
-            for chapter in chapters:
+            for index, chapter in enumerate(chapters, start=1):
                 if run.stop or run.paused:
                     break
                 try:
-                    stats = _process_chapter(run, chapter)
+                    stats = _process_chapter(
+                        run, chapter, position=index, total=len(chapters)
+                    )
                 except BudgetPaused:
                     run.paused = True
                     break
@@ -1761,6 +1914,7 @@ def run_translate(
 
         status = RunStatus.PAUSED if run.paused else RunStatus.COMPLETED
         if run.paused:
+            run.progress_status = "paused"
             run.stats["budget_paused"] = True
         result = _finalize(run, result, status=str(status))
         result.paused = run.paused
@@ -1773,6 +1927,7 @@ def run_translate(
     except BudgetPaused:
         if run is not None:
             status = RunStatus.PAUSED
+            run.progress_status = "paused"
             run.stats["budget_paused"] = True
             previous = run.db.get_run(run.run_id)
             if previous is not None and previous["status"] == RunStatus.RUNNING:
@@ -1780,6 +1935,7 @@ def run_translate(
         raise
     except Exception:
         if run is not None:
+            run.progress_status = "failed"
             current = run.db.get_run(run.run_id)
             if current is not None and current["status"] == RunStatus.RUNNING:
                 _finalize(
@@ -1790,6 +1946,7 @@ def run_translate(
         raise
     finally:
         if run is not None:
+            _progress_finish(run)
             run.db.close()
 
 

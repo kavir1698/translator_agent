@@ -96,7 +96,9 @@ This prints the token table and the projected cost for `economy`, `standard` and
 uv run tj --book my-book translate
 ```
 
-This translates every chapter in reading order and resumes from the database if interrupted. Useful flags: `--chapters 1,3-5`, `--dry-run` (plan and estimate, no calls), `--max-usd 5`, `--cost-mode economy`, `--parallel-chapters 4`, `--no-cache`, `--refresh`.
+This translates every chapter in reading order and resumes from the database if interrupted. While it runs, a live progress bar on stderr shows the current chapter and phase (drafting, reviewing, revising, repairing, checking), windows completed, segments translated and cost so far. It appears automatically in an interactive terminal; use `--progress` or `--no-progress` to force it on or off.
+
+Useful flags: `--chapters 1,3-5`, `--dry-run` (plan and estimate, no calls), `--max-usd 5`, `--cost-mode economy`, `--parallel-chapters 4`, `--no-cache`, `--refresh`.
 
 Exit codes: `0` success, `2` usage/config error, `3` paused at the budget cap (state is saved; raise the cap and re-run), `4` finished with unresolved error issues or coverage below 100% (see the run report).
 
@@ -177,8 +179,8 @@ Global options: `--book/-b <slug>` (required when more than one workspace exists
 | `tj init <FILE>` | `--slug`, `--rights-basis`, `--translator`, `--glossary <FILE>`, `--force` |
 | `tj inspect` | `--json`, `--diff` |
 | `tj analyze` | `--sample-budget N`, `--draft-only`, `--approve`, `--only N`, `--review-brief`, `--auto-glossary` |
-| `tj translate` | `--chapters`, `--segments`, `--windows`, `--dry-run`, `--exit-after N`, `--max-usd N`, `--cost-mode`, `--allow-overrun`, `--force`, `--no-cache`, `--refresh`, `--parallel-chapters N`, `--calibrate`, `--replan`, `--only-stale`, `--require-anchors`, `--no-anchors`, `--review-brief`, `--local-only`, `--allow-cloud`, `--accept-pdf-quality` |
-| `tj retranslate` | `--segments`, `--chapter`, `--window`, `--stale-only` |
+| `tj translate` | `--chapters`, `--segments`, `--windows`, `--dry-run`, `--exit-after N`, `--max-usd N`, `--cost-mode`, `--allow-overrun`, `--force`, `--no-cache`, `--refresh`, `--parallel-chapters N`, `--calibrate`, `--replan`, `--only-stale`, `--require-anchors`, `--no-anchors`, `--review-brief`, `--local-only`, `--allow-cloud`, `--accept-pdf-quality`, `--progress/--no-progress` |
+| `tj retranslate` | `--segments`, `--chapter`, `--window`, `--stale-only`, `--progress/--no-progress` |
 | `tj audit` | `--chapter N`, `--sample N`, `--readthrough/--no-readthrough`, `--max-usd N`, `--json` |
 | `tj export` | `--formats epub,docx,md,txt`, `--out <DIR>`, `--allow-incomplete`, `--generated-at <ISO-8601>`, `--pdf`, `--bilingual` |
 | `tj glossary` | `list`, `review`, `approve`, `reject`, `edit`, `add`, `import`, `export`, `sync`, `pending` |

@@ -7,6 +7,7 @@ import typer
 from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .common import build_provider, load_context, parse_int_list, parse_str_list
+from .progress import translation_progress
 from .ui import console, err_console, handle_errors
 
 
@@ -54,6 +55,11 @@ def translate(
     accept_pdf_quality: bool = typer.Option(
         False, "--accept-pdf-quality", help="Proceed with a low-quality PDF import."
     ),
+    progress: bool | None = typer.Option(
+        None,
+        "--progress/--no-progress",
+        help="Show a live progress bar (default: auto when stderr is a terminal).",
+    ),
 ) -> None:
     """Translate the book (or a chapter subset) window by window."""
     context = load_context(ctx.obj.get("book") if ctx.obj else None)
@@ -86,14 +92,16 @@ def translate(
     )
     for warning in options_warnings(review_brief):
         err_console.print(f"[yellow]{warning}[/yellow]")
-    result = run_translate(
-        root=context.root,
-        slug=context.slug,
-        settings=context.settings,
-        profile=context.profile,
-        provider=build_provider(context),
-        options=options,
-    )
+    with translation_progress(enabled=progress) as reporter:
+        result = run_translate(
+            root=context.root,
+            slug=context.slug,
+            settings=context.settings,
+            profile=context.profile,
+            provider=build_provider(context),
+            options=options,
+            progress=reporter,
+        )
     for warning in result.warnings:
         err_console.print(f"[yellow]warning:[/yellow] {warning}")
     if result.dry_run:
