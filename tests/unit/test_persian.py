@@ -30,6 +30,7 @@ from tarjoman.persian.normalize import has_banned_codepoints, normalize_fa
 from tarjoman.persian.numerals import (
     numbers_match,
     parse_number,
+    spelled_number_present,
     to_ascii_digits,
     to_persian_digits,
 )
@@ -136,6 +137,14 @@ def test_numbers():
     assert numbers_match("He paid 1,234 dollars.", "او ۱۲۳۴ دلار پرداخت.") is True
     assert numbers_match("He paid 1,234 dollars.", "او ۱۲۳۵ دلار پرداخت.") is False
     assert parse_number("۱۲۳٫۴۵") == 123.45
+
+
+def test_spelled_numbers():
+    assert spelled_number_present(19, "قرن نوزدهم") is True
+    assert spelled_number_present(20, "بیست و یک کتاب") is True
+    assert spelled_number_present(3, "سه روز") is True
+    assert spelled_number_present(19, "قرن بیستم") is False
+    assert spelled_number_present(1.5, "یک و نیم") is False
 
 
 def _nodes(fragment: str):
@@ -250,6 +259,9 @@ def test_l05_digits():
     assert "L05" in codes(check_segment(seg("Chapter 5"), tr("فصل 5")))
     assert "L05" in codes(check_segment(seg("Chapter 5"), tr("فصل ۶")))
     assert "L05" not in codes(check_segment(seg("Chapter 5"), tr("فصل ۵")))
+    assert "L05" not in codes(check_segment(seg("Chapter 5"), tr("فصل پنجم")))
+    assert "L05" not in codes(check_segment(seg("19th century"), tr("قرن نوزدهم")))
+    assert "L05" in codes(check_segment(seg("19th century"), tr("قرن بیستم")))
     assert "L05" not in codes(check_segment(seg("no numbers"), tr("سلام")))
 
 

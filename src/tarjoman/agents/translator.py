@@ -39,7 +39,7 @@ class TranslationOutcome:
     strict_retry: bool = False
 
 
-def max_output_tokens(source_tokens: int, tier: TierProfile, fa_ratio: float = 2.0) -> int:
+def max_output_tokens(source_tokens: int, tier: TierProfile, fa_ratio: float = 3.0) -> int:
     projected = math.ceil(max(1, source_tokens) * fa_ratio * 1.3)
     return max(512, min(projected, max(512, tier.max_output_tokens - 512)))
 

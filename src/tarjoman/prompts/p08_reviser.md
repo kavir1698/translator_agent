@@ -1,6 +1,6 @@
 ---
 id: p08_reviser
-version: 3
+version: 4
 agent: A8
 tier: quality
 temperature: 0.3
@@ -54,7 +54,7 @@ Rules:
   issue explicitly requires it.
 - Output the FULL window (all segments), not only the edited ones.
 
-Return:
+Return only this JSON object, nothing else:
 {
   "segments": [{"id": "...", "fa_markup": "...", "notes": ""}],
   "applied": [{"segment_id": "...", "issue_index": 0, "how": "one line"}],

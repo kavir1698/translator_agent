@@ -167,7 +167,30 @@ def run_agent(
         messages=messages,
         result=result,
         cached=False,
+        error="output truncated" if result.finish_reason == "length" else None,
     )
+    if result.finish_reason == "length":
+        output_tokens = min(
+            max(output_tokens * 2, 1024), max(512, tier.max_output_tokens)
+        )
+        result = provider.complete(
+            messages=messages,
+            model=tier.model,
+            temperature=temperature,
+            max_output_tokens=output_tokens,
+            response_schema=response_schema,
+        )
+        _record(
+            db,
+            run_id=run_id,
+            agent=prompt.agent,
+            model=tier.model,
+            prompt_hash=prompt_hash,
+            messages=messages,
+            result=result,
+            cached=False,
+            error="output truncated" if result.finish_reason == "length" else None,
+        )
 
     try:
         value = _coerce(schema_model, result)

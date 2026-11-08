@@ -17,7 +17,7 @@ from tarjoman.core.tokens import count_words, sentence_count
 
 from .markup import validate_markup
 from .normalize import has_banned_codepoints, normalize_fa
-from .numerals import numeric_values
+from .numerals import numeric_values, spelled_number_present
 from .punctuation import (
     PERSIAN_LETTER_CLASS,
     guillemets_balanced,
@@ -214,7 +214,10 @@ def _check_l05(seg: LintSegment, tr: LintTranslation, config: LintConfig) -> lis
     source_numbers = numeric_values(seg.source_text)
     if source_numbers:
         target_numbers = numeric_values(tr.fa_text)
-        if sorted(source_numbers) != sorted(target_numbers):
+        missing = list((Counter(source_numbers) - Counter(target_numbers)).elements())
+        extra = list((Counter(target_numbers) - Counter(source_numbers)).elements())
+        unexplained = [value for value in missing if not spelled_number_present(value, tr.fa_text)]
+        if extra or unexplained:
             issues.append(
                 LintIssue(
                     "L05",

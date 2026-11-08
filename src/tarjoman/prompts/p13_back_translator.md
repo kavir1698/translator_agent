@@ -1,6 +1,6 @@
 ---
 id: p13_back_translator
-version: 1
+version: 2
 agent: A13
 tier: quality
 temperature: 0.2
@@ -15,4 +15,4 @@ its structure, its ambiguities, and its flaws. Keep names as they are transliter
 {{ fa_text }}
 </persian>
 
-Return {"segments": [{"id": "{{ segment_id }}", "fa_markup": "<literal English here>"}]}
+Return only this JSON object: {"segments": [{"id": "{{ segment_id }}", "fa_markup": "<literal English here>"}]}

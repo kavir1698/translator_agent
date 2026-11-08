@@ -147,17 +147,13 @@ class LiteLLMProvider:
             except Exception:
                 parsed = None
 
-        cost = 0.0
-        try:
-            cost = float(litellm.completion_cost(completion_response=response) or 0.0)
-        except Exception:
-            cost = call_cost_usd(
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                pricing=self._pricing(model),
-                cached_tokens=cached_tokens,
-                peak=is_peak(),
-            )
+        cost = call_cost_usd(
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            pricing=self._pricing(model),
+            cached_tokens=cached_tokens,
+            peak=is_peak(),
+        )
 
         return LLMResult(
             text=text,
