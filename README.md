@@ -137,6 +137,35 @@ uv run tj --book my-book export --allow-incomplete   # deliberately skips the co
 
 Outputs land in `books/my-book/out/` as `<slug>.fa.epub`, `<slug>.fa.docx`, `<slug>.fa.md`, `<slug>.fa.txt`, plus `<slug>.fa.pdf` (`--pdf`) and `<slug>.bilingual.html` (`--bilingual`). The EPUB is validated internally on every export; external `epubcheck` runs only if installed.
 
+### 8. Example: whole book in `quality` mode, workspace beside the source
+
+`--cost-mode` overrides the auto-selected mode for that run: `economy` skips the literary editor, `standard` is the default, and `quality` reserves the configured quality tier for the critics and reviser (the shipped profile uses `gpt-6-luna` via OpenRouter, so `OPENROUTER_API_KEY` is required). Run `tj estimate` first; it prints all three modes at both tariffs.
+
+By default the workspace lives under `books/` in the project. To keep the database, run artifacts and output beside the source file, point `project.books_dir` at that folder with an absolute path, then pass that folder to `--out`:
+
+```powershell
+$InputDir = "D:\library"
+$Book     = Join-Path $InputDir "book.epub"
+$env:TARJOMAN_PROJECT__BOOKS_DIR = $InputDir
+
+uv run tj init $Book --slug book
+uv run tj --book book estimate
+uv run tj --book book translate --cost-mode quality --max-usd 10
+uv run tj --book book audit
+uv run tj --book book export --formats epub,docx,md,txt --out $InputDir
+```
+
+This creates the workspace at `D:\library\book\` and writes `book.fa.epub`, `book.fa.docx`, `book.fa.md` and `book.fa.txt` into `D:\library\`. Run the commands from the project root; `TARJOMAN_PROJECT__BOOKS_DIR` applies to the current shell session. Add `TARJOMAN_PROJECT__BOOKS_DIR=D:\library` to `.env` to make it the default. If the export gate reports unresolved issues, resolve or waive them (`tj qa`) or pass `--allow-incomplete` deliberately.
+
+In bash the same override is:
+
+```bash
+export TARJOMAN_PROJECT__BOOKS_DIR="$HOME/library"
+uv run tj init "$HOME/library/book.epub" --slug book
+uv run tj --book book translate --cost-mode quality --max-usd 10
+uv run tj --book book export --formats epub,docx,md,txt --out "$HOME/library"
+```
+
 ## Command reference
 
 Global options: `--book/-b <slug>` (required when more than one workspace exists) and `--verbose/-v`. Global options must come **before** the command, e.g. `tj --book my-book translate`.
