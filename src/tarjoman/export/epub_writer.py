@@ -92,7 +92,7 @@ def _add_noteref_ids(body: str, seen: set[str]) -> str:
 
 def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
     title = chapter_title(chapter)
-    parts = [isolate_latin(f'<h1 class="chapter-title">{_escape(title)}</h1>')]
+    parts = [f'<h1 class="chapter-title">{isolate_latin(title)}</h1>']
     skipping_title = (
         bool(chapter.segments)
         and chapter.segments[0].kind == "heading"

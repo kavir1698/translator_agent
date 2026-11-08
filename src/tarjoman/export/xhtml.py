@@ -329,23 +329,24 @@ def render_segment(
     if segment.kind == "footnote":
         return ""
     inner = rebuilt_html(segment.fa_markup, segment.nodes)
+    rendered = _serialize_fragment(
+        inner, isolate=True, assets=assets, image_prefix=image_prefix
+    )
+    if not rendered:
+        return ""
     if segment.kind == "heading":
         level = heading_level(segment.source_html)
-        fragment = f"<h{level}>{inner}</h{level}>"
-    elif segment.kind == "verse":
-        fragment = f'<p class="verse">{inner}</p>'
-    elif segment.kind == "quote":
-        fragment = f"<blockquote>{inner}</blockquote>"
-    elif segment.kind == "table":
-        inner = _TABLE_SEPARATOR.sub(r"\1", inner)
-        fragment = f'<table class="table">{inner}</table>'
-    elif segment.kind == "caption":
-        fragment = f'<p class="caption">{inner}</p>'
-    else:
-        fragment = f"<p>{inner}</p>"
-    return _serialize_fragment(
-        fragment, isolate=True, assets=assets, image_prefix=image_prefix
-    )
+        return f"<h{level}>{rendered}</h{level}>"
+    if segment.kind == "verse":
+        return f'<p class="verse">{rendered}</p>'
+    if segment.kind == "quote":
+        return f"<blockquote>{rendered}</blockquote>"
+    if segment.kind == "table":
+        rendered = _TABLE_SEPARATOR.sub(r"\1", rendered)
+        return f'<table class="table">{rendered}</table>'
+    if segment.kind == "caption":
+        return f'<p class="caption">{rendered}</p>'
+    return f"<p>{rendered}</p>"
 
 
 def segment_body(segment: ExportSegment, assets: SourceAssets) -> str:

@@ -6,13 +6,14 @@ import shutil
 from pathlib import Path
 
 import pytest
+from lxml import html as lxml_html
 from typer.testing import CliRunner
 
 from tarjoman.cli.main import app
 from tarjoman.core.config import load_settings
 from tarjoman.core.db import Database
 from tarjoman.core.errors import ConfigError, PdfNoTextLayer
-from tarjoman.ingest.blocks import BlockKind
+from tarjoman.ingest.blocks import BlockKind, iter_blocks
 from tarjoman.ingest.normalize_source import normalized_for_compare
 from tarjoman.ingest.reader import read_source
 from tarjoman.pipeline.init_pass import init_book
@@ -26,6 +27,23 @@ def _assert_roundtrip(result) -> None:
     assert blocks
     for block in blocks:
         assert block.rebuild() == block.html, f"{block.kind}: {block.text[:60]}"
+
+
+def test_iter_blocks_descends_wrapper_containers():
+    body = lxml_html.document_fromstring(
+        "<html><body><div class='wrapper'><div class='pad'>"
+        "<h1>Title</h1><p>One.</p><p>Two.</p>"
+        "</div></div></body></html>"
+    ).find(".//body")
+
+    blocks = iter_blocks(body)
+
+    assert [block.kind for block in blocks] == [
+        BlockKind.HEADING,
+        BlockKind.PROSE,
+        BlockKind.PROSE,
+    ]
+    assert [block.text for block in blocks] == ["Title", "One.", "Two."]
 
 
 def test_epub_roundtrip(fixtures: dict[str, Path]):

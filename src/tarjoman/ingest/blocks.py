@@ -228,7 +228,10 @@ def make_block(element: etree._Element, kind: BlockKind | None = None) -> Block:
 
 
 def _has_block_children(element: etree._Element) -> bool:
-    return any(local_name(child.tag) in _BLOCKS for child in element)
+    return any(
+        local_name(child.tag) in _BLOCKS or local_name(child.tag) in _CONTAINERS
+        for child in element
+    )
 
 
 def _loose_text_block(text: str) -> Block:

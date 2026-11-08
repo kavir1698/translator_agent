@@ -264,6 +264,24 @@ def _unsafe_segment(nodes, markup: str = "⟨1⟩x⟨/1⟩"):
     )
 
 
+def test_render_segment_keeps_block_wrapper() -> None:
+    from dataclasses import replace
+
+    from tarjoman.export.assets import SourceAssets
+    from tarjoman.export.xhtml import render_segment
+
+    prose = _unsafe_segment(
+        [{"id": 1, "path": [], "kind": "text", "text": "سلام"}], markup="سلام"
+    )
+    assert render_segment(prose, SourceAssets()) == "<p>سلام</p>"
+
+    heading = replace(prose, kind="heading", source_html="<h2>عنوان</h2>")
+    assert render_segment(heading, SourceAssets()) == "<h2>سلام</h2>"
+
+    quote = replace(prose, kind="quote")
+    assert render_segment(quote, SourceAssets()) == "<blockquote>سلام</blockquote>"
+
+
 def test_active_source_markup_is_sanitized() -> None:
     from tarjoman.export.assets import ImageAsset, SourceAssets
     from tarjoman.export.xhtml import render_segment
