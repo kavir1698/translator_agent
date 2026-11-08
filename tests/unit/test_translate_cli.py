@@ -5,7 +5,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
+from shahrzad.cli.main import app
 
 from .support import SmartProvider, count_versions, make_workspace
 
@@ -14,10 +14,10 @@ runner = CliRunner()
 
 def _patch(monkeypatch, provider: SmartProvider) -> None:
     monkeypatch.setattr(
-        "tarjoman.cli.translate_cmd.build_provider", lambda _context: provider
+        "shahrzad.cli.translate_cmd.build_provider", lambda _context: provider
     )
     monkeypatch.setattr(
-        "tarjoman.cli.retranslate_cmd.build_provider", lambda _context: provider
+        "shahrzad.cli.retranslate_cmd.build_provider", lambda _context: provider
     )
 
 

@@ -1,4 +1,4 @@
-# Tarjoman — Schemas, DDL, Configuration, Artifacts
+# Shahrzad — Schemas, DDL, Configuration, Artifacts
 
 Companion to `IMPLEMENTATION_PLAN.md`. Everything here is normative: the implementer must not rename tables, columns, enum values, config keys or artifact fields without updating this file and `DECISIONS.md`.
 
@@ -450,20 +450,20 @@ Invariants enforced in code (not expressible in SQLite):
 - `issues.dedupe_key` is always namespaced (`seg:` or `ch:`), so chapter-scope rows (`segment_id NULL`) dedupe correctly despite SQLite's NULL-distinct behaviour;
 - `issues.status='waived'` requires `resolved_by` and `resolution`; a waived `error` no longer blocks export but stays visible in the report;
 - `chapters.status` only moves forward (validated transitions), except `reviewed → translated` after corrections (allowed, logged);
-- `translations.glossary_hash` equals the hash of the approved glossary at write time; a mismatch with the current hash marks the version `stale` for `tj qa --stale-glossary`.
+- `translations.glossary_hash` equals the hash of the approved glossary at write time; a mismatch with the current hash marks the version `stale` for `shz qa --stale-glossary`.
 
 ---
 
 ## 4. Configuration (`configs/default.yaml`)
 
-Load order: defaults → `configs/default.yaml` → book config (`books/<slug>/config.yaml`) → env (`TARJOMAN_*`) → CLI flags. Unknown keys are an error (typo protection). `tj doctor` prints the resolved config with secrets redacted.
+Load order: defaults → `configs/default.yaml` → book config (`books/<slug>/config.yaml`) → env (`SHAHRZAD_*`) → CLI flags. Unknown keys are an error (typo protection). `shz doctor` prints the resolved config with secrets redacted.
 
 ```yaml
-# Tarjoman configuration — every key is required to exist in this file (defaults),
+# Shahrzad configuration — every key is required to exist in this file (defaults),
 # book configs override a subset. Values shown are the defaults.
 
 project:
-  name: tarjoman
+  name: shahrzad
   books_dir: books
   timezone: UTC
 
@@ -472,7 +472,7 @@ book:
   source_lang: en
   target_lang: fa              # fa-IR content; dc:language is "fa"
   rights_basis: user_supplied  # informational only: public_domain | licensed | user_supplied
-  translator: "Tarjoman"
+  translator: ""               # optional human translator credit; empty by default
   cover: null                  # path override; default uses source cover
 
 provider:
@@ -599,7 +599,7 @@ pricing_usd_per_mtok: {cache_hit_input: 0.003, input: 0.15, output: 0.60}  # off
 ### 5.1 `artifacts/brief.yaml`
 
 ```yaml
-# approved: 2026-11-05T18:40:12Z  hash: 9f2c...  (written by tj analyze --approve)
+# approved: 2026-11-05T18:40:12Z  hash: 9f2c...  (written by shz analyze --approve)
 book_slug: the-old-man-and-the-sea
 brief:
   genre: literary fiction
@@ -645,7 +645,7 @@ brief:
 ### 5.2 `artifacts/glossary.yaml`
 
 ```yaml
-# source of truth for terminology; edited by humans; imported by `tj glossary sync`
+# source of truth for terminology; edited by humans; imported by `shz glossary sync`
 version: 1
 book_slug: the-old-man-and-the-sea
 entries:
@@ -706,7 +706,7 @@ One line per human edit (produced by the HTML report download or hand-written):
 {"segment_id":"c003.s0051","action":"needs_work","note":"meaning of 'blessed' lost; see source sentence 2"}
 ```
 
-`tj review apply` accepts `action ∈ {accept, needs_work}`; `accept` inserts a `pass=human` version (normalized, linted), `needs_work` reopens the segment and re-flags it without changing text.
+`shz review apply` accepts `action ∈ {accept, needs_work}`; `accept` inserts a `pass=human` version (normalized, linted), `needs_work` reopens the segment and re-flags it without changing text.
 
 ### 5.6 `review/flags.csv`
 
@@ -798,7 +798,7 @@ candidates:
     rationale: "recurring catch; transliteration keeps the Hemingway register"
     status: proposed            # proposed | approved | rejected  (mirrors DB)
 ```
-`tj glossary review` reads this + DB; edits may change `proposed_fa`, `status`; `tj glossary sync` imports it.
+`shz glossary review` reads this + DB; edits may change `proposed_fa`, `status`; `shz glossary sync` imports it.
 
 **`artifacts/anchors.draft.yaml`** — gate-2 proposals, approved into `anchors.yaml`:
 ```yaml

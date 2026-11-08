@@ -5,11 +5,11 @@ from pathlib import Path
 
 import yaml
 
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.pipeline.qa_pass import QaOptions, run_qa
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.pipeline.qa_pass import QaOptions, run_qa
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, count_versions, make_workspace
 
@@ -86,7 +86,7 @@ def test_one_chapter_failure_does_not_abort(
 ) -> None:
     make_workspace(isolated_home, fixtures)
     original = __import__(
-        "tarjoman.pipeline.translate_pass", fromlist=["_process_window"]
+        "shahrzad.pipeline.translate_pass", fromlist=["_process_window"]
     )._process_window
 
     def flaky(run, chapter, window, chapter_segments):
@@ -94,7 +94,7 @@ def test_one_chapter_failure_does_not_abort(
             raise RuntimeError("planted chapter failure")
         return original(run, chapter, window, chapter_segments)
 
-    monkeypatch.setattr("tarjoman.pipeline.translate_pass._process_window", flaky)
+    monkeypatch.setattr("shahrzad.pipeline.translate_pass._process_window", flaky)
     result = _run(isolated_home, SmartProvider(), TranslateOptions(chapters=[1, 2]))
     assert result.status == "completed"
     assert result.report_path is not None and result.report_path.is_file()

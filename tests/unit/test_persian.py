@@ -5,8 +5,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from lxml import html as lxml_html
 
-from tarjoman.ingest.inline import extract_nodes, render_with_sentinels
-from tarjoman.persian.lint import (
+from shahrzad.ingest.inline import extract_nodes, render_with_sentinels
+from shahrzad.persian.lint import (
     CHECK_REGISTRY,
     GlossaryTerm,
     LintBook,
@@ -20,14 +20,14 @@ from tarjoman.persian.lint import (
     check_segment,
     check_window,
 )
-from tarjoman.persian.markup import (
+from shahrzad.persian.markup import (
     normalize_markup,
     normalize_translation,
     rebuilt_html,
     validate_markup,
 )
-from tarjoman.persian.normalize import has_banned_codepoints, normalize_fa
-from tarjoman.persian.numerals import (
+from shahrzad.persian.normalize import has_banned_codepoints, normalize_fa
+from shahrzad.persian.numerals import (
     numbers_match,
     parse_number,
     spelled_number_present,

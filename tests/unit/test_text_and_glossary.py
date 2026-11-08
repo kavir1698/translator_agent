@@ -5,15 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from tarjoman.agents.entity_extractor import scan_proper_nouns
-from tarjoman.core.errors import ConfigError
-from tarjoman.core.glossary import (
+from shahrzad.agents.entity_extractor import scan_proper_nouns
+from shahrzad.core.errors import ConfigError
+from shahrzad.core.glossary import (
     GlossaryEntry,
     load_glossary_file,
     normalize_term_en,
     write_glossary_yaml,
 )
-from tarjoman.core.text import compute_style_metrics, split_sentences_en
+from shahrzad.core.text import compute_style_metrics, split_sentences_en
 
 
 def test_split_sentences_respects_abbreviations_and_decimals():

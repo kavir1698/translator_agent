@@ -1,18 +1,18 @@
 # Complete per-book override example.
 #
 # Copy this file to books/<slug>/config.yaml and keep only the keys you need to
-# change. Every key here exists in `Settings` (src/tarjoman/core/config.py);
+# change. Every key here exists in `Settings` (src/shahrzad/core/config.py);
 # unknown keys are rejected. Load order is:
-#   configs/default.yaml -> books/<slug>/config.yaml -> TARJOMAN_* env -> CLI flags
+#   configs/default.yaml -> books/<slug>/config.yaml -> SHAHRZAD_* env -> CLI flags
 # This file is never read automatically from `configs/`. Project-wide settings
 # (such as `project.books_dir`) belong in `configs/default.yaml`, not here.
 
 book:
-  # slug: my-book               # normally derived from the title at `tj init`
+  # slug: my-book               # normally derived from the title at `shz init`
   source_lang: en               # source language code
   target_lang: fa               # Iranian Persian; EPUB dc:language is "fa"
   rights_basis: user_supplied   # public_domain | licensed | user_supplied (informational, no gate)
-  translator: "Tarjoman"        # dc:contributor value in EPUB/DOCX
+  translator: ""                # optional human translator credit; empty by default
   title_fa: null                # Persian title for dc:title; set it for an all-Persian export
   cover: null                   # explicit cover path; default uses the source cover
 
@@ -49,13 +49,13 @@ pipeline:
     max_revision_rounds: 1      # revise attempts per window
     force_fidelity_on_length_outlier: true
   passes:
-    readthrough: true           # source-free Persian read-through during `tj audit`
+    readthrough: true           # source-free Persian read-through during `shz audit`
     backtranslate: false        # post-v1; not wired
-    consistency_audit: true     # consistency auditor during `tj audit`
+    consistency_audit: true     # consistency auditor during `shz audit`
   analyze:
     sample_token_budget: 18000  # sample size for the book brief
     summary_model_tier: cheap   # quality | balanced | cheap
-    brief_approval: auto        # auto | manual (manual pauses `tj analyze` with exit 3)
+    brief_approval: auto        # auto | manual (manual pauses `shz analyze` with exit 3)
   resume: true                  # reuse status + cache on re-runs
 
 persian:

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.pipeline.qa_pass import run_qa
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.pipeline.qa_pass import run_qa
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, make_workspace
 

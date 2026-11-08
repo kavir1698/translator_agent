@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.errors import BudgetPaused
-from tarjoman.pipeline.qa_pass import run_qa
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.errors import BudgetPaused
+from shahrzad.pipeline.qa_pass import run_qa
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, count_versions, make_workspace
 

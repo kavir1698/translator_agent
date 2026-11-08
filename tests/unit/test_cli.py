@@ -4,7 +4,7 @@ import json
 
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
+from shahrzad.cli.main import app
 
 runner = CliRunner()
 

@@ -1,6 +1,6 @@
-# Auto-glossary example: propose character/place/term equivalents during `tj analyze`.
-# Copy to books/<slug>/config.yaml. Review proposals with `tj glossary review`
-# and approve them with `tj glossary approve --min-confidence 0.90`.
+# Auto-glossary example: propose character/place/term equivalents during `shz analyze`.
+# Copy to books/<slug>/config.yaml. Review proposals with `shz glossary review`
+# and approve them with `shz glossary approve --min-confidence 0.90`.
 glossary:
   mode: auto                    # off | provided | auto
   approval: auto                # auto approves proposals above the threshold

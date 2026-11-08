@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from tarjoman.core.cost import (
+from shahrzad.core.cost import (
     PriceTable,
     call_cost_usd,
     estimate_all_modes,

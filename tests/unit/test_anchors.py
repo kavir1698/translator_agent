@@ -6,19 +6,19 @@ from pathlib import Path
 
 import pytest
 
-from tarjoman.context.packer import PackState, build_pack
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.core.errors import ConfigError
-from tarjoman.pipeline.anchors_pass import (
+from shahrzad.context.packer import PackState, build_pack
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.core.errors import ConfigError
+from shahrzad.pipeline.anchors_pass import (
     approve_anchors,
     load_anchor_draft,
     load_approved_anchors,
     propose_anchors,
     reject_anchors,
 )
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, make_workspace
 

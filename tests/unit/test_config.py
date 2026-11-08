@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tarjoman.core.config import load_model_profile, load_settings
-from tarjoman.core.errors import ConfigError
+from shahrzad.core.config import load_model_profile, load_settings
+from shahrzad.core.errors import ConfigError
 
 
 def test_defaults_load(repo_root: Path):
@@ -20,13 +20,13 @@ def test_defaults_load(repo_root: Path):
 
 
 def test_env_overrides_yaml(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("TARJOMAN_BUDGET__MAX_USD", "3.5")
+    monkeypatch.setenv("SHAHRZAD_BUDGET__MAX_USD", "3.5")
     settings = load_settings(root=repo_root)
     assert settings.budget.max_usd == 3.5
 
 
 def test_cli_override_wins(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("TARJOMAN_BUDGET__MAX_USD", "3.5")
+    monkeypatch.setenv("SHAHRZAD_BUDGET__MAX_USD", "3.5")
     settings = load_settings(root=repo_root, overrides={"budget": {"max_usd": 7}})
     assert settings.budget.max_usd == 7
 

@@ -37,7 +37,7 @@ Severity vocabularies; A7 temp 0.35; A12 temp 0.2; A3 batch unit; D11 lint range
 - Verse line-count equality in A7 is a warning, not a hard constraint (translation may legitimately merge two short lines).
 - `eval` judge calibration is a 20-paragraph internal set; recalibrate when the judge model changes.
 - Unused/soft config keys: `budget.abort_on_exceed`, `persian.ellipsis`, `export.epub.validate_with_epubcheck` — wire or remove as encountered.
-- `tj retranslate --stale-only` falls back to whole chapters when a term has no recorded window; good enough for v1.
+- `shz retranslate --stale-only` falls back to whole chapters when a term has no recorded window; good enough for v1.
 - Parallel-chapter mode is explicit about the coherence trade-off; do not enable it by default.
 
 ## Evidence and provenance

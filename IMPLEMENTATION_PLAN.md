@@ -1,4 +1,4 @@
-# Tarjoman — Implementation Plan
+# Shahrzad — Implementation Plan
 
 **An agentic English → Persian literary translation system**
 Version 1.0 · Greenfield build · Target implementer: Kilo Code
@@ -66,7 +66,7 @@ Success is **not** "fluent Persian". Success is: the Persian reads as a book, no
 | Output: **EPUB 3 (RTL), DOCX (RTL), Markdown**; optional bilingual HTML; **PDF via DOCX→LibreOffice** | Print-ready/typeset PDF, InDesign/IDML, audiobook scripts |
 | Prose fiction and non-fiction; basic poetry/verse preservation | Complex textbooks (math, multi-column figures with callouts) |
 | Zero-config quickstart; human gates **optional** (brief, glossary, review) | Multi-user server, real-time collaboration, accounts |
-| **Local CLI only** (`tj`), no server, no telemetry | Hosted web app / SaaS (possible later, M12+) |
+| **Local CLI only** (`shz`), no server, no telemetry | Hosted web app / SaaS (possible later, M12+) |
 
 ### 1.4 Quality bar (v1 acceptance, measured in Section 8)
 
@@ -83,7 +83,7 @@ The industry's own numbers set the frame: vendors claim "98%" sentence accuracy,
 
 The product owner supplies the source file for private, non-published use. The tool therefore records provenance but does not interrogate it:
 
-- `books.rights_basis` defaults to `user_supplied` at `tj init`; `public_domain` and `licensed` are allowed values, but there is **no acknowledgement prompt and no export gate** — the user already asserted they will not publish.
+- `books.rights_basis` defaults to `user_supplied` at `shz init`; `public_domain` and `licensed` are allowed values, but there is **no acknowledgement prompt and no export gate** — the user already asserted they will not publish.
 - The EPUB colophon and `runs/<id>/manifest.json` record the basis + source file hash, so provenance is auditable if the book is ever shared.
 - The README states plainly: publishing a translation of an in-copyright book needs the rightsholder's permission; the software does not clear rights and is not a legal opinion.
 
@@ -147,7 +147,7 @@ Checkpoint 1: brief + glossary approval (only in `--review-brief` / `glossary.ap
 Mechanical properties (coverage, markup, digits, punctuation, script purity, glossary presence, numbers, repetition, length outlier, blacklisted translationese) are deterministic linters with stable codes (L01–L20). LLM judging is reserved for literary quality scoring and the whole-book read-through. Consequence: QA is free, fast, reproducible and testable; LLM QA is budgeted and sampled.
 
 **D12 — Evaluation exists from M2 (mechanical) and M10 (judge/bake-off); model choice is empirical.**
-A small golden set of hand-checked passages, a rubric-based judge, a pairwise preference protocol and a model bake-off script. Rationale: "which model is best at literary EN→FA" is an empirical question that changes every few months; hard-coding a vendor is a liability. Consequence: `eval/` package, `tj eval bakeoff`, `configs/models/*.yaml`; linters and their metrics ship from M2, and no default model is blessed before the bake-off.
+A small golden set of hand-checked passages, a rubric-based judge, a pairwise preference protocol and a model bake-off script. Rationale: "which model is best at literary EN→FA" is an empirical question that changes every few months; hard-coding a vendor is a liability. Consequence: `eval/` package, `shz eval bakeoff`, `configs/models/*.yaml`; linters and their metrics ship from M2, and no default model is blessed before the bake-off.
 
 **D13 — Persian correctness is enforced, not hoped for.**
 Character normalization (Arabic ی/ک → Persian, digits, ZWNJ), punctuation and typography are handled by a dedicated module with table-driven rules and tests, applied to model output before persistence. Rationale: LLMs emit Arabic-script variants, ASCII punctuation and broken half-spaces constantly; a book with inconsistent orthography is unpublishable. Consequence: `persian/normalize.py` (write rules), `persian/lint.py` (read/verify rules), never mix the two concerns.
@@ -233,7 +233,7 @@ Each row is a sourced finding and the design choice it forces. Full notes: `rese
 | `review` | optional human | report + corrections | new translation versions, reviewed flags | never blocks export |
 | `export` | no | DB + artifacts | EPUB/DOCX/HTML/TXT | hard fail with actionable message |
 
-Every stage writes a `runs` row with `stage`, `status`, `config_snapshot`, `stats_json`, `cost_usd`. `tj translate` resumes: it selects segments whose status is not `done`, in deterministic order, and never re-bills cached calls.
+Every stage writes a `runs` row with `stage`, `status`, `config_snapshot`, `stats_json`, `cost_usd`. `shz translate` resumes: it selects segments whose status is not `done`, in deterministic order, and never re-bills cached calls.
 
 ### 3.3 Agent roster
 
@@ -261,20 +261,20 @@ Design note for the implementer: A6/A7 are deliberately **not** merged, and A8 r
 
 | Command | Required subcommands / flags | Purpose |
 |---|---|---|
-| `tj init <file>` | `--slug`, `--rights-basis`, `--translator`, `--glossary`, `--force` | create workspace, parse source (EPUB/PDF/DOCX/TXT/MD), write DB |
-| `tj inspect` | `--json`, `--diff` | chapter/segment/token/markup stats; `--diff` compares stored source hashes |
-| `tj analyze` | `--sample-budget`, `--draft-only`, `--approve`, `--only <chapter>` | brief draft, summaries, entities, glossary candidates |
-| `tj glossary` | `list`, `review`, `approve`, `reject`, `edit`, `add`, `import`, `export`, `sync`, `pending`; `--min-confidence` | gate 1 |
-| `tj anchors` | `propose`, `approve`, `reject`, `list` | gate 2 (chapter-1 calibration) |
-| `tj translate` | `--chapters`, `--segments`, `--windows`, `--dry-run`, `--exit-after`, `--max-usd`, `--cost-mode`, `--allow-overrun`, `--force`, `--no-cache`, `--parallel-chapters`, `--calibrate`, `--replan`, `--only-stale`, `--require-anchors`, `--review-brief`, `--local-only`, `--allow-cloud` | main translation pass |
-| `tj qa` | `--chapter`, `--group`, `--stale-glossary`, `--json`; `accept --issue ID --note ... --reviewer ...`, `resolve --issue ID` | lint, flags, issue lifecycle |
-| `tj audit` | `--chapter`, `--sample`, `--readthrough/--no-readthrough`, `--max-usd` | consistency audit + Persian read-through |
-| `tj review` | `build --chapter --out`, `apply <corrections.jsonl> --dry-run` | gate 3 |
-| `tj export` | `--formats epub,docx,md,txt`, `--pdf`, `--bilingual`, `--out`, `--allow-incomplete`, `--generated-at` | editable outputs + optional bilingual + PDF conversion |
-| `tj estimate` | `--chapters`, `--json` | cost table before spending |
-| `tj doctor` | `--models`, `--tokenizer`, `--epubcheck`, `--json` | environment + config health |
-| `tj eval` | `judge --golden --out`, `bakeoff --models --out`, `calibrate` | quality measurement (M10) |
-| `tj retranslate` | `--segments`, `--chapter`, `--window`, `--stale-only` | targeted redo without touching history |
+| `shz init <file>` | `--slug`, `--rights-basis`, `--translator`, `--glossary`, `--force` | create workspace, parse source (EPUB/PDF/DOCX/TXT/MD), write DB |
+| `shz inspect` | `--json`, `--diff` | chapter/segment/token/markup stats; `--diff` compares stored source hashes |
+| `shz analyze` | `--sample-budget`, `--draft-only`, `--approve`, `--only <chapter>` | brief draft, summaries, entities, glossary candidates |
+| `shz glossary` | `list`, `review`, `approve`, `reject`, `edit`, `add`, `import`, `export`, `sync`, `pending`; `--min-confidence` | gate 1 |
+| `shz anchors` | `propose`, `approve`, `reject`, `list` | gate 2 (chapter-1 calibration) |
+| `shz translate` | `--chapters`, `--segments`, `--windows`, `--dry-run`, `--exit-after`, `--max-usd`, `--cost-mode`, `--allow-overrun`, `--force`, `--no-cache`, `--parallel-chapters`, `--calibrate`, `--replan`, `--only-stale`, `--require-anchors`, `--review-brief`, `--local-only`, `--allow-cloud` | main translation pass |
+| `shz qa` | `--chapter`, `--group`, `--stale-glossary`, `--json`; `accept --issue ID --note ... --reviewer ...`, `resolve --issue ID` | lint, flags, issue lifecycle |
+| `shz audit` | `--chapter`, `--sample`, `--readthrough/--no-readthrough`, `--max-usd` | consistency audit + Persian read-through |
+| `shz review` | `build --chapter --out`, `apply <corrections.jsonl> --dry-run` | gate 3 |
+| `shz export` | `--formats epub,docx,md,txt`, `--pdf`, `--bilingual`, `--out`, `--allow-incomplete`, `--generated-at` | editable outputs + optional bilingual + PDF conversion |
+| `shz estimate` | `--chapters`, `--json` | cost table before spending |
+| `shz doctor` | `--models`, `--tokenizer`, `--epubcheck`, `--json` | environment + config health |
+| `shz eval` | `judge --golden --out`, `bakeoff --models --out`, `calibrate` | quality measurement (M10) |
+| `shz retranslate` | `--segments`, `--chapter`, `--window`, `--stale-only` | targeted redo without touching history |
 
 There is **no rights gate**: `rights_basis` defaults to `user_supplied`, is informational, and is recorded in the colophon and manifest. `--allow-cloud` only matters for the `licensed` case; `--local-only` is available for privacy. Export never asks for acknowledgement.
 
@@ -302,7 +302,7 @@ run(stage):
 
 Same DB + same artifacts + same config ⇒ same window plan, same cache keys, same exports, **in sequential mode**. With `--parallel-chapters`, the set of translations is the same but ledger merge order and `created_at` values differ, so exports are only byte-identical when `--generated-at` is pinned. LLM sampling is the other non-determinism; that is why every pass version is stored. **Export determinism rule:** `dcterms:modified` defaults to the maximum `translations.created_at` in the book, not wall-clock, so re-exporting an unchanged book is byte-identical.
 
-### 3.6 Cost and time model (estimates, to be validated by `tj estimate`)
+### 3.6 Cost and time model (estimates, to be validated by `shz estimate`)
 
 For a 90,000-word English novel (~120k English model tokens). Persian output is tokenizer-hostile: budget **~1.5–2.5× the English token count** (≈2k output tokens per 750-word window; measure per model). The draft window's pack is ~6.5–8k tokens depending on glossary size (Section 6.4), and ~75% of it is the cacheable prefix.
 
@@ -326,7 +326,7 @@ With the book-stable prefix cached (6.4), roughly 60% of input tokens hit cache.
 | `standard` (default) | draft + dual critics + revise + lint | $1.0–1.6 | $0.50–0.80 |
 | `quality` | flash draft; `deepseek-v4-pro` critics + reviser | $4–6 | $2–3 |
 
-So an average 90k-word book is **≈$1–2** in standard mode — far inside the **$10 default ceiling**, with headroom for retries and for a 300k-word book (~$4–6 in standard, still under $10). No premium model is needed for the base product; `quality` exists for books where the cheap-model bake-off shows literary weakness. If M10 adopts low-effort thinking on critics/reviser, add roughly 0.3–0.6M output tokens (**≈$0.4–0.7 peak**) and 1.5–2× wall-clock; it still fits the cap. `tj estimate` prints both tariffs and all three modes before any spend; `--dry-run` makes zero API calls. The ±15% cost-accuracy target applies after the first 50 calls calibrate `fa_ratio`. Wall-clock: 1.5–2.5 h sequential, 40–70 min with 4-way chapter parallelism (longer if thinking is enabled).
+So an average 90k-word book is **≈$1–2** in standard mode — far inside the **$10 default ceiling**, with headroom for retries and for a 300k-word book (~$4–6 in standard, still under $10). No premium model is needed for the base product; `quality` exists for books where the cheap-model bake-off shows literary weakness. If M10 adopts low-effort thinking on critics/reviser, add roughly 0.3–0.6M output tokens (**≈$0.4–0.7 peak**) and 1.5–2× wall-clock; it still fits the cap. `shz estimate` prints both tariffs and all three modes before any spend; `--dry-run` makes zero API calls. The ±15% cost-accuracy target applies after the first 50 calls calibrate `fa_ratio`. Wall-clock: 1.5–2.5 h sequential, 40–70 min with 4-way chapter parallelism (longer if thinking is enabled).
 
 ---
 
@@ -335,7 +335,7 @@ So an average 90k-word book is **≈$1–2** in standard mode — far inside the
 ### 4.1 Tree
 
 ```
-tarjoman/
+shahrzad/
 ├─ pyproject.toml                  # uv-managed project, ruff/mypy/pytest config
 ├─ README.md                       # user guide + legal note + quickstart
 ├─ DECISIONS.md                    # one-line log of implementation choices
@@ -346,7 +346,7 @@ tarjoman/
 │     ├─ deepseek.yaml             # DEFAULT: deepseek-flash + deepseek-v4-pro (quality mode)
 │     ├─ local.yaml                # optional OpenAI-compatible endpoint (Ollama/vLLM)
 │     └─ example-other.yaml        # template for another provider
-├─ src/tarjoman/
+├─ src/shahrzad/
 │  ├─ __init__.py                  # __version__
 │  ├─ cli/
 │  │  ├─ main.py                   # typer app, global options, exit codes
@@ -431,9 +431,9 @@ tarjoman/
    └─ bakeoff.sh
 ```
 
-`src/` layout with a `pyproject.toml` `[project.scripts]` entry `tj = "tarjoman.cli.main:app"`.
+`src/` layout with a `pyproject.toml` `[project.scripts]` entry `shz = "shahrzad.cli.main:app"`.
 
-### 4.2 Book workspace layout (created by `tj init`)
+### 4.2 Book workspace layout (created by `shz init`)
 
 ```
 books/<slug>/
@@ -509,7 +509,7 @@ pricing_usd_per_mtok:                  # off-peak; peak doubles (01:00-04:00, 06
   output: 0.60
 ```
 
-Rules: (a) concrete model IDs are **not** hard-coded in code, only in these YAML files; (b) `tj doctor --models` verifies each alias resolves and can answer a 5-token ping (skipped without API keys); (c) **output caps must be ≥ 8,192 tokens, preferably 16,384–32,768** — a 900-token English window can project ~2k Persian tokens, and a single oversized paragraph needs room; `max_output_tokens: 4096` is a known truncation source; (d) the quality judge is an explicit id, never an alias: `eval.judge_model: deepseek-v4-pro` (a different model from the translator; with a single provider true cross-family judging is impossible, so judge scores are **relative only**, and a human BWS read is the reference when one is available — see 8.4); (e) the bake-off (M10) writes a *decision record* on flash vs pro and on Persian quality; until it runs, `tj translate --dry-run` warns that the profile is unvalidated; (f) **`thinking: disabled` is the default for every agent in v1 — but it is a measured default, not a doctrine.** Rationale: reasoning mode ignores `temperature` and bills chain-of-thought as output, and the literature is mixed (see 9.6). The adapter sets `extra_body={"thinking":{"type":"disabled"}}` on every request; a per-agent override is allowed only through `provider.thinking_overrides`, must be justified by the M10 experiment, and must carry its own cost/latency line in the estimate. (g) 1M context / 384K output is available but does not change the window policy — small windows keep cache economics and review granularity intact.
+Rules: (a) concrete model IDs are **not** hard-coded in code, only in these YAML files; (b) `shz doctor --models` verifies each alias resolves and can answer a 5-token ping (skipped without API keys); (c) **output caps must be ≥ 8,192 tokens, preferably 16,384–32,768** — a 900-token English window can project ~2k Persian tokens, and a single oversized paragraph needs room; `max_output_tokens: 4096` is a known truncation source; (d) the quality judge is an explicit id, never an alias: `eval.judge_model: deepseek-v4-pro` (a different model from the translator; with a single provider true cross-family judging is impossible, so judge scores are **relative only**, and a human BWS read is the reference when one is available — see 8.4); (e) the bake-off (M10) writes a *decision record* on flash vs pro and on Persian quality; until it runs, `shz translate --dry-run` warns that the profile is unvalidated; (f) **`thinking: disabled` is the default for every agent in v1 — but it is a measured default, not a doctrine.** Rationale: reasoning mode ignores `temperature` and bills chain-of-thought as output, and the literature is mixed (see 9.6). The adapter sets `extra_body={"thinking":{"type":"disabled"}}` on every request; a per-agent override is allowed only through `provider.thinking_overrides`, must be justified by the M10 experiment, and must carry its own cost/latency line in the estimate. (g) 1M context / 384K output is available but does not change the window policy — small windows keep cache economics and review granularity intact.
 
 ---
 
@@ -538,7 +538,7 @@ Rules:
 - **No UPDATE of translation text.** Corrections and re-runs insert a new version and flip `is_current` in the same transaction. This gives a full audit trail and makes "what changed and why" answerable.
 - Every table has `created_at` (UTC ISO-8601 with `Z`). Times are never local.
 - Foreign keys `ON DELETE CASCADE` from `books` down; `PRAGMA foreign_keys=ON`.
-- `id` stability: chapter/segment ids derive from document order (`c{idx:03d}`, `s{idx:04d}`), **not** from content, so re-import of the same book keeps ids. Content changes are detected by comparing `source_text` against the stored value; a `content_hash` column supports `tj inspect --diff`.
+- `id` stability: chapter/segment ids derive from document order (`c{idx:03d}`, `s{idx:04d}`), **not** from content, so re-import of the same book keeps ids. Content changes are detected by comparing `source_text` against the stored value; a `content_hash` column supports `shz inspect --diff`.
 - `translations.notes_json` carries translator notes (e.g., "wordplay: footnote candidate"), never user-facing prose embedded in `fa_text`.
 
 ### 5.2 State machines (validated in `db.transition_*`, invalid transition = bug, raise)
@@ -556,23 +556,23 @@ run:     running ──▶ completed | failed | aborted
           paused ──▶ running            (budget stop, resume with same run id)
 ```
 
-`done` means *current translation passed all error-severity linters*. A segment may be `done` and still flagged for human review (warnings, low judge score, high risk score) — flagging is orthogonal to status and lives in `issues`/`risk_score`. An `error` issue is resolved when a newer translation clears it, or **waived** by a human (`tj qa accept --issue ID --note ... --reviewer ...`, which stores `status=waived` + reviewer + reason); a waived error does not block export but stays visible in the report and the manifest. This is the only path by which a known error can reach a published book, and it is recorded.
+`done` means *current translation passed all error-severity linters*. A segment may be `done` and still flagged for human review (warnings, low judge score, high risk score) — flagging is orthogonal to status and lives in `issues`/`risk_score`. An `error` issue is resolved when a newer translation clears it, or **waived** by a human (`shz qa accept --issue ID --note ... --reviewer ...`, which stores `status=waived` + reviewer + reason); a waived error does not block export but stays visible in the report and the manifest. This is the only path by which a known error can reach a published book, and it is recorded.
 
 ### 5.3 Artifact authority
 
 | Artifact | Authority | Written by | Read by |
 |---|---|---|---|
-| `glossary.yaml` | **human** | `tj glossary add/approve/reject`, `apply-corrections` | all translate prompts, QA |
-| `brief.yaml` | **human** (after auto-draft) | `tj analyze` writes `.draft`, human edits, `tj analyze --approve` validates | context packer, prompts |
-| `anchors.yaml` | **human** (after gate 2) | `tj translate --calibrate` proposes, human approves | context packer |
+| `glossary.yaml` | **human** | `shz glossary add/approve/reject`, `apply-corrections` | all translate prompts, QA |
+| `brief.yaml` | **human** (after auto-draft) | `shz analyze` writes `.draft`, human edits, `shz analyze --approve` validates | context packer, prompts |
+| `anchors.yaml` | **human** (after gate 2) | `shz translate --calibrate` proposes, human approves | context packer |
 | `ledger.jsonl` | machine + human corrections | LedgerCurator, human append | context packer, audit |
 | `chapter_summaries.jsonl` | machine | summarizer | context packer |
 | `translations` | machine + human | pipeline, corrections | export, QA, review |
 | `structure.yaml` | human | manual | ingest/chapterize |
 
-`tj glossary sync` = re-import YAML into DB (idempotent, validates duplicates). CLI edits write both atomically (YAML then DB transaction; on DB failure the YAML change is reverted). The DB never wins over YAML for glossary content.
+`shz glossary sync` = re-import YAML into DB (idempotent, validates duplicates). CLI edits write both atomically (YAML then DB transaction; on DB failure the YAML change is reverted). The DB never wins over YAML for glossary content.
 
-### 5.4 Risk score (deterministic, 0–100, recomputed by `tj qa`)
+### 5.4 Risk score (deterministic, 0–100, recomputed by `shz qa`)
 
 ```
 score = 0
@@ -587,7 +587,7 @@ score = 0
 +  5 if segment contains a translated footnote reference
 cap 100
 ```
-Default `review.flag_threshold = 55`; `tj qa` writes `review/flags.csv` sorted by score, plus a random 5% sample of low-risk segments as `sample` flags so quality is not only judged on failures.
+Default `review.flag_threshold = 55`; `shz qa` writes `review/flags.csv` sorted by score, plus a random 5% sample of low-risk segments as `sample` flags so quality is not only judged on failures.
 
 ---
 
@@ -602,7 +602,7 @@ Default `review.flag_threshold = 55`; `tj qa` writes `review/flags.csv` sorted b
 - DOCX: `python-docx`; iterate body in document order (paragraphs and tables); map `Heading 1..6`/`Title` styles to heading blocks; preserve bold/italic runs; footnotes are not exposed by python-docx → v1: warn that DOCX footnotes become inline `[^n]` markers and are treated as text (documented limitation).
 - TXT/MD: split on blank lines into paragraphs; Markdown heading lines (`#`) become headings, `>` quote, code fences become `pre` blocks marked non-translatable.
 - **PDF (best-effort):** open with `pypdfium2`; iterate pages, extract characters with boxes. **Scanned detection first:** if a page has < 20 extractable characters and < 80% of pages have a text layer, fail with `PDF_NO_TEXT_LAYER — OCR is not supported in v1`. Reconstruct reading order: cluster characters into lines by y-band, detect 1 vs 2 columns from an x-histogram, order lines top-down/left-right; merge lines into paragraphs when the vertical gap is normal **and** the next line starts at the paragraph indent (or the previous line does not end a sentence); drop repeated headers/footers (a line on > 30% of pages at the same y) and page numbers; join end-of-line hyphenation (`exam-\nple` → `example`). Chapter detection is heuristic (largest-font lines matching `chapter|part|book` patterns) and **must be confirmed through `structure.yaml` when `import_quality` is below `high`**. Figures are not extracted in v1 (skipped with an `info` note); footnotes are recovered as smaller-font blocks at the page bottom.
-- **PDF import quality (0–1)** is stored as `books.import_quality`: fraction of pages with a text layer, mean words/paragraph sanity (20–180), hyphenation-join rate, repeated-line removal rate. `tj inspect` prints it; `< 0.6` blocks `translate` until the user supplies `structure.yaml` or passes `--accept-pdf-quality`. A low score is shown as a warning, never hidden.
+- **PDF import quality (0–1)** is stored as `books.import_quality`: fraction of pages with a text layer, mean words/paragraph sanity (20–180), hyphenation-join rate, repeated-line removal rate. `shz inspect` prints it; `< 0.6` blocks `translate` until the user supplies `structure.yaml` or passes `--accept-pdf-quality`. A low score is shown as a warning, never hidden.
 - Compute and store `source.sha256`; refuse to re-init the same slug with a different hash unless `--force` (which archives the old DB as `book.db.bak-<ts>`).
 
 #### 6.0.2 Block model and classification
@@ -697,7 +697,7 @@ Post-processing: merge a chapter with < 40 words into the following chapter (exc
 
 - Reconstruct every block from `nodes_json` and compare to the sanitized original HTML: **byte-identical** (after normalization) for a corpus of 3 EPUBs, 1 DOCX and 1 TXT/Markdown fixture. This round-trip test is mandatory.
 - 100% of source paragraphs are represented (count check).
-- Re-running `tj init` on the same file is idempotent (same ids, same hashes).
+- Re-running `shz init` on the same file is idempotent (same ids, same hashes).
 
 ### 6.1 Analysis pass
 
@@ -740,7 +740,7 @@ The analyst must output *decisions*, not adjectives. Required fields:
 
 Then `compute_style_metrics(source)` (deterministic, no LLM): mean/median sentence length, sentence-length distribution, % dialogue chars, paragraph length, punctuation density, unique-word ratio, em-dash/semicolon frequency. Stored per book and used later for **target-side drift detection** (Persian metrics are compared against the book's own translated baseline, not against English directly).
 
-Gate 1a (**optional**): `tj analyze` writes `artifacts/brief.draft.yaml`. With `pipeline.analyze.brief_approval: auto` (default) it validates the draft and freezes `brief.yaml` immediately, recording its hash; with `manual`, a human edits and runs `tj analyze --approve`. Translation never blocks on the brief: if no brief exists it uses the conservative built-in defaults and marks the run `experimental`.
+Gate 1a (**optional**): `shz analyze` writes `artifacts/brief.draft.yaml`. With `pipeline.analyze.brief_approval: auto` (default) it validates the draft and freezes `brief.yaml` immediately, recording its hash; with `manual`, a human edits and runs `shz analyze --approve`. Translation never blocks on the brief: if no brief exists it uses the conservative built-in defaults and marks the run `experimental`.
 
 #### 6.1.3 Chapter summaries (A2, parallel)
 
@@ -754,8 +754,8 @@ Batches of ~4,000 source tokens; each batch returns entities with `kind`, `surfa
 
 This gate exists only for `glossary.mode: auto` with `glossary.approval: manual`. In the default `off` mode it is skipped entirely; in `provided` mode the user's file is validated, not approved.
 
-When it runs, `tj glossary review` prints a table (term, kind, count, proposals, confidence) and supports:
-`tj glossary approve <id...>`, `approve --min-confidence 0.85`, `reject`, `edit <id> --fa "..."`, `add --en "..." --fa "..." --kind term`, `import terms.csv`, `export glossary.yaml`.
+When it runs, `shz glossary review` prints a table (term, kind, count, proposals, confidence) and supports:
+`shz glossary approve <id...>`, `approve --min-confidence 0.85`, `reject`, `edit <id> --fa "..."`, `add --en "..." --fa "..." --kind term`, `import terms.csv`, `export glossary.yaml`.
 Rule in this mode: all `character` and `place` entries must be approved before translation; `term`/`motif` may stay proposed and are enforced only after approval (with a warning if a proposed term appears > 10 times).
 
 #### 6.1.6 Glossary content rules (A4 proposer)
@@ -784,7 +784,7 @@ The three enforcement layers apply to `provided`/`auto`; in `off` only the name-
 2. **Deterministic layer (L03):** for each approved term with a surface occurrence in the window source, require the approved `fa` form (or an approved alias) to appear in the window output, ignoring ZWNJ/spacing variants; count mismatches. Also flag *unapproved variants*: if a similar Persian form (rapidfuzz ≥ 88) appears but is not the approved form → `error` (drift).
 3. **Repair layer:** if L03 fails, run a targeted repair prompt (single call, only failing segments, includes the exact required forms); if it still fails, flag for human review. Never rewrite the glossary silently.
 
-Dynamic suggestions: A5 may return `glossary_suggestions` (term_en, proposed_fa, reason, segment_id). They are stored in `glossary_suggestions` with `status=pending` (never enforced), deduplicated per `(term, segment)`; `tj glossary pending` lists them at chapter close, `promote <id>` creates a `proposed` glossary entry for human approval, `reject <id>` dismisses it. A new recurring proper noun that appears ≥ 3 times without a glossary entry is a `warn` issue `L12` in every mode.
+Dynamic suggestions: A5 may return `glossary_suggestions` (term_en, proposed_fa, reason, segment_id). They are stored in `glossary_suggestions` with `status=pending` (never enforced), deduplicated per `(term, segment)`; `shz glossary pending` lists them at chapter close, `promote <id>` creates a `proposed` glossary entry for human approval, `reject <id>` dismisses it. A new recurring proper noun that appears ≥ 3 times without a glossary entry is a `warn` issue `L12` in every mode.
 
 ### 6.3 Window planning (`pipeline/window.py`)
 
@@ -809,7 +809,7 @@ soft preferences:
 window.overlap_prev = last 2 segments of previous window (source + translated FA)
 ```
 
-Every window gets a deterministic `window_id = f"{chapter_id}.w{idx:03d}"` (3 digits; the whole-book fallback chapter can exceed 99 windows). The plan is stored in the run manifest (json list of segment ids) so resuming after code changes is possible only if the plan hash matches; otherwise the run refuses with "window plan changed; run `tj translate --replan`" (which archives affected translations).
+Every window gets a deterministic `window_id = f"{chapter_id}.w{idx:03d}"` (3 digits; the whole-book fallback chapter can exceed 99 windows). The plan is stored in the run manifest (json list of segment ids) so resuming after code changes is possible only if the plan hash matches; otherwise the run refuses with "window plan changed; run `shz translate --replan`" (which archives affected translations).
 
 ### 6.4 Context pack (`context/packer.py`)
 
@@ -871,10 +871,10 @@ Rules and edge cases:
 
 Sequence — **optional**, only when the owner wants the calibration discipline (the default unattended run skips all of it):
 
-1. `tj translate --chapters 1` runs with the brief + glossary but **no anchors**.
-2. `tj qa && tj review build --chapter 1` → the human reads chapter 1 in the bilingual report and applies corrections (`tj review apply`).
-3. `tj translate --calibrate` (equivalent to `tj anchors propose`) selects up to 3 anchor candidates from chapter 1's `done` segments: longest segment with `kind=prose` and no dialogue quote, longest dialogue-heavy segment, and the segment with the most inline emphasis (deterministic tie-break: segment id). It writes `artifacts/anchors.draft.yaml` with source, current approved translation, and a one-line note per pair.
-4. The human edits/approves: `tj anchors approve` writes `artifacts/anchors.yaml`. `tj anchors reject <id>` removes a candidate; if fewer than 2 remain, run with no anchors (warning: voice consistency will rely on the brief alone).
+1. `shz translate --chapters 1` runs with the brief + glossary but **no anchors**.
+2. `shz qa && shz review build --chapter 1` → the human reads chapter 1 in the bilingual report and applies corrections (`shz review apply`).
+3. `shz translate --calibrate` (equivalent to `shz anchors propose`) selects up to 3 anchor candidates from chapter 1's `done` segments: longest segment with `kind=prose` and no dialogue quote, longest dialogue-heavy segment, and the segment with the most inline emphasis (deterministic tie-break: segment id). It writes `artifacts/anchors.draft.yaml` with source, current approved translation, and a one-line note per pair.
+4. The human edits/approves: `shz anchors approve` writes `artifacts/anchors.yaml`. `shz anchors reject <id>` removes a candidate; if fewer than 2 remain, run with no anchors (warning: voice consistency will rely on the brief alone).
 5. Subsequent runs include the approved anchors when present. Missing anchors **never block** the zero-config path: the run logs one warning and continues with the brief (and glossary, if any). `--require-anchors` is available for users who want the discipline; it turns the warning into an error.
 
 Anchors are *voice examples*, not translation memory: they are never reused verbatim for similar sentences, and they are capped at 3 pairs (~700 tokens) so they cannot crowd the glossary out of the context pack.
@@ -890,7 +890,7 @@ Merged into `ledger.jsonl` (append-only, dedup by `(kind,key)` keeping the lates
 
 Also at chapter close: compute chapter metrics (mean Persian sentence length, dialogue ratio, unique-word ratio); compare with the book's running baseline; if |z| > 2.5 on any metric → `warn` issue `L15 style_drift` on the chapter. This catches the classic "chapter 9 sounds like a different translator" failure.
 
-### 6.7 Whole-book audit pass (`tj audit`)
+### 6.7 Whole-book audit pass (`shz audit`)
 
 Runs after all chapters are `translated`; budget-capped, sampled:
 
@@ -901,7 +901,7 @@ Runs after all chapters are `translated`; budget-capped, sampled:
 5. **Back-translation sample — NOT in v1.** `passes.backtranslate` stays `false` and A13/P13 are post-v1; the measured evidence for back-translation as a quality method is weak (see `research/prior-art.md` §4). Do not wire it in v1; revisit only in M12+.
 6. **Aggregate report:** `runs/<id>/report.md` with coverage, adherence %, issue counts by code/severity, cost, time, top 20 riskiest segments, and the list of chapters with style drift.
 
-### 6.8 Export (`tj export`, no LLM)
+### 6.8 Export (`shz export`, no LLM)
 
 #### 6.8.1 EPUB 3 (primary; the only publication format in v1)
 
@@ -954,13 +954,13 @@ Rules: never set `letter-spacing` (breaks cursive joining); never enable hyphena
 
 **Bidi regression strings** (must render correctly; assert in the manual test checklist and, where possible, in the bilingual HTML test): `ISBN 978-0-00-000000-0`, `2026-11-05`, `10/12`, `(Routledge, 1998)`, `«The Waste Land»`, `۵۰٪`, `ص ۱۲–۱۵`, `A. Smith`, `He said "سلام" and left.`.
 
-**Validation:** `tj export` always runs internal checks — zip order/mimetype stored, every manifest href exists, every fragment id exists, unique ids per file, spine order matches chapters, all `dc:*` present, `dcterms:modified` present, no remote URLs, no scripts, every body segment `done`. Then `scripts/run_epubcheck.sh` runs `epubcheck` if Java is available and fails the export on `ERROR`. Acceptance: **zero errors** on a real book.
+**Validation:** `shz export` always runs internal checks — zip order/mimetype stored, every manifest href exists, every fragment id exists, unique ids per file, spine order matches chapters, all `dc:*` present, `dcterms:modified` present, no remote URLs, no scripts, every body segment `done`. Then `scripts/run_epubcheck.sh` runs `epubcheck` if Java is available and fails the export on `ERROR`. Acceptance: **zero errors** on a real book.
 
 **Determinism:** sorted entries, fixed mtime (`1980-01-01T00:00:00Z`), stable UUID, `dcterms:modified` defaulting to the newest translation timestamp; two exports of an unchanged DB are byte-identical.
 
 #### 6.8.2 DOCX (secondary)
 
-python-docx, `w:bidi` on every paragraph, `w:rtl` on runs, `w:rFonts` set for both Latin (`ascii/hAnsi`) and complex-script (`cs`) slots, `w:szCs` matching `w:sz`, Vazirmatn as the document default font, document defaults `w:lang w:bidi="fa"` (same tag as the EPUB to keep one language value across formats), headings mapped to Word heading styles with Persian numbering, page size A5 default (configurable), mirrored margins, footnote texts collected as **endnotes** at the chapter end (python-docx has no footnote API — document this limitation in README), images embedded at original resolution, cover as first page if available. **This is the primary "open, editable, PDF-convertible" artifact** — the user can edit it in Word/LibreOffice and export a PDF by hand, or let `tj export --pdf` do it (6.8.5).
+python-docx, `w:bidi` on every paragraph, `w:rtl` on runs, `w:rFonts` set for both Latin (`ascii/hAnsi`) and complex-script (`cs`) slots, `w:szCs` matching `w:sz`, Vazirmatn as the document default font, document defaults `w:lang w:bidi="fa"` (same tag as the EPUB to keep one language value across formats), headings mapped to Word heading styles with Persian numbering, page size A5 default (configurable), mirrored margins, footnote texts collected as **endnotes** at the chapter end (python-docx has no footnote API — document this limitation in README), images embedded at original resolution, cover as first page if available. **This is the primary "open, editable, PDF-convertible" artifact** — the user can edit it in Word/LibreOffice and export a PDF by hand, or let `shz export --pdf` do it (6.8.5).
 
 #### 6.8.3 Markdown (open editable text)
 
@@ -968,11 +968,11 @@ python-docx, `w:bidi` on every paragraph, `w:rtl` on runs, `w:rFonts` set for bo
 
 #### 6.8.4 Bilingual edition (optional side product)
 
-Off by default; `tj export --bilingual` adds it. Single HTML: chapter sections, each segment as a row `source | translation`, `dir` per cell, issue badges, filter box. No external assets. Intended for the translator and for bilingual readers, not as the primary deliverable.
+Off by default; `shz export --bilingual` adds it. Single HTML: chapter sections, each segment as a row `source | translation`, `dir` per cell, issue badges, filter box. No external assets. Intended for the translator and for bilingual readers, not as the primary deliverable.
 
 #### 6.8.5 PDF (conversion, not typesetting)
 
-`tj export --pdf` requires LibreOffice (`soffice`) on PATH: run `soffice --headless --convert-to pdf --outdir out out/<slug>.fa.docx`, then verify the file exists, is non-zero and starts with `%PDF`. If `soffice` is missing, print the exact manual command instead of failing the whole export. **State the limitation in the output and README:** a LibreOffice RTL PDF is readable but not print-perfect (no kashida justification, limited page mirroring, endnote styling varies); for a typeset book, the v2 path is XePersian/LaTeX. Never call this "print-ready".
+`shz export --pdf` requires LibreOffice (`soffice`) on PATH: run `soffice --headless --convert-to pdf --outdir out out/<slug>.fa.docx`, then verify the file exists, is non-zero and starts with `%PDF`. If `soffice` is missing, print the exact manual command instead of failing the whole export. **State the limitation in the output and README:** a LibreOffice RTL PDF is readable but not print-perfect (no kashida justification, limited page mirroring, endnote styling varies); for a typeset book, the v2 path is XePersian/LaTeX. Never call this "print-ready".
 
 #### 6.8.6 Plain text
 
@@ -980,22 +980,22 @@ Off by default; `tj export --bilingual` adds it. Single HTML: chapter sections, 
 
 ### 6.9 Review loop (`review/`)
 
-`tj review build` generates `review/report.html`:
+`shz review build` generates `review/report.html`:
 - Header: book title, coverage, adherence %, open issues by severity, cost, model profile, prompt versions.
 - Filters: chapter, severity, issue code, risk score, only-flagged, search text; keyboard next/prev.
 - Row: segment id, source (with markup indicated), current translation (editable textarea with RTL), issue list (code, severity, message, quotes), translator notes, glossary terms in this segment, and buttons `Accept`, `Needs work`, `Next`.
 - Edits are stored in browser memory and exported on click as `corrections.jsonl` (download). The file must be self-contained (no server, no CDN) and must not leak API keys.
 
-`tj review apply corrections.jsonl`:
+`shz review apply corrections.jsonl`:
 - **Markup contract:** the editable field contains `fa_markup`; sentinels are rendered as non-editable chips (a toggle shows the raw string). A correction is rejected if any existing sentinel id is missing or duplicated (L02), or if unknown ids appear; the report warns before download. Humans may reorder sentences but may not invent inline markup.
 - Inserts a new `translations` version with `pass="human"`, `model="human"`, flips `is_current`, transitions segment to `done` unless lint errors remain, resolves the flags marked accepted.
-- Re-runs linters; prints a summary; suggests `tj export`.
+- Re-runs linters; prints a summary; suggests `shz export`.
 
 ### 6.10 Staleness and targeted redo
 
-- Glossary approval after translation starts: every translation stores `glossary_hash` (hash of the approved glossary at write time) and `glossary_terms_json` (the EN terms injected into its window). `tj qa --stale-glossary` marks versions whose hash differs and lists the changed terms; `tj retranslate --stale-only` re-translates exactly the windows whose `glossary_terms_json` intersects those terms (falling back to the whole chapter when a term has no recorded window).
-- `tj retranslate --segments c003.s0012,c003.s0013` (or `--chapter 3 --window 4`) creates new draft versions for exactly those segments (using current context pack), preserving history.
-- `tj export` refuses if any body segment is not `done` or has unresolved `error` issues, unless `--allow-incomplete` (then the EPUB gets a generated "TRANSLATION INCOMPLETE" note page and the run is marked experimental).
+- Glossary approval after translation starts: every translation stores `glossary_hash` (hash of the approved glossary at write time) and `glossary_terms_json` (the EN terms injected into its window). `shz qa --stale-glossary` marks versions whose hash differs and lists the changed terms; `shz retranslate --stale-only` re-translates exactly the windows whose `glossary_terms_json` intersects those terms (falling back to the whole chapter when a term has no recorded window).
+- `shz retranslate --segments c003.s0012,c003.s0013` (or `--chapter 3 --window 4`) creates new draft versions for exactly those segments (using current context pack), preserving history.
+- `shz export` refuses if any body segment is not `done` or has unresolved `error` issues, unless `--allow-incomplete` (then the EPUB gets a generated "TRANSLATION INCOMPLETE" note page and the run is marked experimental).
 
 ---
 
@@ -1011,7 +1011,7 @@ Off by default; `tj export --bilingual` adds it. Single HTML: chapter sections, 
   `check_book(book) -> list[Issue]`.
   Scope assignment: **segment** L01, L02, L04–L08, L10, L11, L13, L14, L16, L17, L20; **window** L03, L18 (L03 needs the window's source + translations because a term may span segments); **chapter** L15, L19; **book** L09 (duplicate sentences across the book), L12 (variant inventory). A linter that needs cross-segment data but is written as `check_segment` is a bug.
 - **Auto-fix only what is mechanically certain**: digit script, ASCII→Persian punctuation in Persian-context runs, whitespace/ZWNJ-run cleanup, sentinel stripping. Everything semantic is flagged, never rewritten.
-- Every check runs after every translation pass and again before export. `tj qa` is idempotent: running it twice produces no duplicate issues (dedupe on `(stage, code, dedupe_key)`, where `dedupe_key` carries the segment/chapter scope and a hash of the quoted evidence).
+- Every check runs after every translation pass and again before export. `shz qa` is idempotent: running it twice produces no duplicate issues (dedupe on `(stage, code, dedupe_key)`, where `dedupe_key` carries the segment/chapter scope and a hash of the quoted evidence).
 - Severity policy: `error` blocks `done`/export; `warn` flags for review; `info` is advisory and does not affect risk score.
 
 ### 7.2 Check catalogue
@@ -1039,7 +1039,7 @@ Off by default; `tj export --bilingual` adds it. Single HTML: chapter sections, 
 | L19 | Footnote/endnote integrity | error | every `noteref` id has a matching translated note; every note is referenced; no orphan markers | — |
 | L20 | Heading/caption sanity | warn | headings not punctuated as sentences unless source is; captions present; table cells non-empty | — |
 
-`L03 + L11 + L12` are the consistency triad; `L08 + L14 + L15` are the literary-quality triad; `L02 + L10 + L16 + L19` are the loss/addition triad. These groupings drive `tj qa --group` output.
+`L03 + L11 + L12` are the consistency triad; `L08 + L14 + L15` are the literary-quality triad; `L02 + L10 + L16 + L19` are the loss/addition triad. These groupings drive `shz qa --group` output.
 
 ### 7.3 Persian normalization (applied to every stored translation)
 
@@ -1082,7 +1082,7 @@ Beyond the blacklist, compute per chapter and per book:
 ### 7.6 `review/flags.csv` columns
 
 `segment_id, chapter, risk_score, codes, severities, source_excerpt, fa_excerpt, sample_flag, reviewed, reviewer_note`
-`sample_flag=true` marks the random 5% low-risk sample. `reviewed` is filled by `tj review apply`.
+`sample_flag=true` marks the random 5% low-risk sample. `reviewed` is filled by `shz review apply`.
 
 ---
 
@@ -1124,7 +1124,7 @@ Protocol for T3: for each candidate, show two translations of the same paragraph
 - Output (`JudgeVerdict`): `fidelity`, `naturalness`, `style_fidelity`, `terminology`, `cultural_adaptation` (each 1–5 — exactly these five keys, no `overall`), plus `errors[]` with `type` (MQM: omission, addition, mistranslation, untranslated, fluency, terminology, locale, style), `severity` (minor/major/critical), `quote_source`, `quote_target`, `comment`; `verdict ∈ pass, minor_issues, major_issues, reject`.
 - 3 samples with randomized source/candidate order, temperature 0.2 (sampling needs variance to be meaningful — three temperature-0 samples are identical), take the median per dimension and the union of errors; never show which model produced the output.
 - Calibration: judge must reproduce the ordering of the 20 human-rated calibration paragraphs in `eval/calibration/` (Kendall τ ≥ 0.6) before it is used for decisions. Re-calibrate when the judge model changes.
-- The judge is `deepseek-v4-pro` — a different **model** from the translator, though the same provider; with a single-provider setup true cross-family judging is impossible. Consequences: judge scores are used **only for relative comparison** (A/B, regression, routing), never as an absolute quality claim, and human/BWS review remains the gate when an editor is available. If the user later configures a second provider, `eval.judge_model` should move to it. `tj eval` errors when `eval.judge_model` is unset.
+- The judge is `deepseek-v4-pro` — a different **model** from the translator, though the same provider; with a single-provider setup true cross-family judging is impossible. Consequences: judge scores are used **only for relative comparison** (A/B, regression, routing), never as an absolute quality claim, and human/BWS review remains the gate when an editor is available. If the user later configures a second provider, `eval.judge_model` should move to it. `shz eval` errors when `eval.judge_model` is unset.
 
 ### 8.5 Model bake-off (M10, `eval/bakeoff.py`)
 
@@ -1145,7 +1145,7 @@ Known constraints to record in the report: model availability in the user's juri
 ### 8.7 Regression policy
 
 - `pytest -m online` (real API, golden set, small) runs manually/nightly, never in the default CI.
-- Any change to prompts (`p01`–`p13`), model profile, or pipeline semantics requires a `tj eval judge --golden bench` run and a before/after table in the PR description.
+- Any change to prompts (`p01`–`p13`), model profile, or pipeline semantics requires a `shz eval judge --golden bench` run and a before/after table in the PR description.
 - Accept a change only if: no T1 regression, judge `fidelity` Δ ≥ −0.1, and at least one of `style_fidelity`/`naturalness` improves by ≥ 0.1. Human BWS is required for changes that aim to improve style.
 
 ---
@@ -1179,7 +1179,7 @@ class Provider(Protocol):
 - `--no-cache` bypasses reads (still writes); `--refresh` deletes entries for the affected segments only.
 - Prompt hash = content hash of the rendered template + version from front-matter. Editing a prompt invalidates only the calls that used it.
 - Window plan hash stored in `runs`; a changed plan invalidates downstream segment versions only where segment ids changed.
-- **Orphan recovery:** on startup, any `runs` row still `running` whose `stats_json.heartbeat_at` is older than `2 × timeout_s` is marked `aborted`; `tj translate` then resumes from segment statuses. A run is never silently resurrected as `running`.
+- **Orphan recovery:** on startup, any `runs` row still `running` whose `stats_json.heartbeat_at` is older than `2 × timeout_s` is marked `aborted`; `shz translate` then resumes from segment statuses. A run is never silently resurrected as `running`.
 
 ### 9.4 Concurrency, retries, timeouts
 
@@ -1192,9 +1192,9 @@ class Provider(Protocol):
 ### 9.5 Budget, cost modes, and tariffs
 
 - **Default ceiling: `budget.max_usd: 10`** per book (the product owner's constraint). `--max-usd` overrides it per run.
-- `tj estimate` computes expected cost from the window plan and calibrated token ratios, prints the three cost modes at **both tariffs**, and writes `runs/<id>/estimate.json`. `--dry-run` makes zero calls.
+- `shz estimate` computes expected cost from the window plan and calibrated token ratios, prints the three cost modes at **both tariffs**, and writes `runs/<id>/estimate.json`. `--dry-run` makes zero calls.
 - **Cost modes** (`pipeline.cost_mode: auto|economy|standard|quality`, default `auto`): `auto` picks `standard` if the estimate fits the cap, downgrades to `economy` if it does not, and never silently upgrades. Mode definitions and prices are in Section 3.6. `auto` prints the chosen mode and the reason.
-- **Tariff awareness, no waiting:** DeepSeek prices double during peak (01:00–04:00 and 06:00–10:00 UTC, Mon–Fri). `tj estimate` shows peak and off-peak, and the run report states which tariff applied and the cost. The tool **always starts immediately** when invoked — scheduling is the owner's job; there is no `--prefer-off-peak` wait mode in v1.
+- **Tariff awareness, no waiting:** DeepSeek prices double during peak (01:00–04:00 and 06:00–10:00 UTC, Mon–Fri). `shz estimate` shows peak and off-peak, and the run report states which tariff applied and the cost. The tool **always starts immediately** when invoked — scheduling is the owner's job; there is no `--prefer-off-peak` wait mode in v1.
 - **Cache accounting:** every call records `cached` tokens and prices them at the cache-hit rate; the report shows cache-hit ratio and the dollars saved. A cache-hit ratio below 50% on translation is a bug in prefix stability (Section 6.4).
 - Enforcement: before each call, if `spent + worst_case_call_cost > cap`, stop scheduling, persist state, mark run `paused`, exit code 3 with a resume command. `--allow-overrun` exists but is loud.
 - Every call's cost comes from `litellm.completion_cost` when available, else `configs/models/*.yaml` `pricing_usd_per_mtok` (which distinguishes cache-hit, cache-miss and output); unknown pricing ⇒ estimate from tokens and warn once.
@@ -1213,9 +1213,9 @@ class Provider(Protocol):
 
 - Console: `rich` progress with chapter/window, cost so far, retries, cache hit %.
 - `runs/<id>/calls.jsonl`: one JSON object per call, mirroring the `llm_calls` columns plus `retries`: `created_at, run_id, agent, model, prompt_hash, input_hash, cached, tokens_in, tokens_out, cost_usd, latency_ms, retries, finish_reason, error`. No prompt content in logs by default (`--log-prompts` stores under `runs/<id>/prompts/` for debugging, gitignored).
-- `tj doctor` reports: python version, sqlite version, disk space, config validity, model alias resolution + ping, `thinking` setting, tokenizer calibration, epubcheck availability, LibreOffice availability (PDF export), font assets present, provenance recorded (informational, no gate), API key presence (never values), cache size.
+- `shz doctor` reports: python version, sqlite version, disk space, config validity, model alias resolution + ping, `thinking` setting, tokenizer calibration, epubcheck availability, LibreOffice availability (PDF export), font assets present, provenance recorded (informational, no gate), API key presence (never values), cache size.
 
-**Exit codes** (stable contract, scripts depend on it): `0` success; `1` runtime failure; `2` usage/config error; `3` paused by budget or interrupt (state saved; resume with the command printed to stderr); `4` finished with unresolved `error` issues or coverage < 100% (report path printed). `tj translate` returns `4`, not `1`, for a partially failed book so a pipeline can distinguish "bad configuration" from "some segments need a human".
+**Exit codes** (stable contract, scripts depend on it): `0` success; `1` runtime failure; `2` usage/config error; `3` paused by budget or interrupt (state saved; resume with the command printed to stderr); `4` finished with unresolved `error` issues or coverage < 100% (report path printed). `shz translate` returns `4`, not `1`, for a partially failed book so a pipeline can distinguish "bad configuration" from "some segments need a human".
 
 ### 9.8 Prompt injection and untrusted content
 
@@ -1229,7 +1229,7 @@ The book text is untrusted input. Defenses:
 ### 9.9 Content policy, privacy, legal
 
 - Translate faithfully; do not soften, censor or add content. If a provider's filter blocks a segment, try the configured fallback model once, then mark `failed` and flag for a human — never silently omit.
-- Default: no book text leaves the machine except to the configured provider; `--local-only` restricts to a local OpenAI-compatible endpoint (`api_base`), and `tj doctor` warns when a cloud provider is selected for a book marked `rights_basis: licensed` without `--allow-cloud`.
+- Default: no book text leaves the machine except to the configured provider; `--local-only` restricts to a local OpenAI-compatible endpoint (`api_base`), and `shz doctor` warns when a cloud provider is selected for a book marked `rights_basis: licensed` without `--allow-cloud`.
 - API keys only from env/`.env` (gitignored); never printed, never logged, never written into run manifests (store a hash/fingerprint instead).
 - `books.rights_basis` defaults to `user_supplied` and is **informational only**: it is recorded in the EPUB colophon and run manifest for provenance, and it never blocks a step. The README states that publishing a translation of an in-copyright book needs the rightsholder's permission; the tool assumes private use and does not clear rights.
 - Test fixtures from Project Gutenberg are internal-only (mirrors, offline cache, no redistribution); strip PG headers if a text ever ships.
@@ -1241,27 +1241,27 @@ The book text is untrusted input. Defenses:
 Estimates assume one competent developer; Kilo Code should aim for roughly the same order of magnitude and stop at each acceptance gate. **Treat them as planning units and lower bounds:** an independent review put M1/M8/M10 at 2–4× these numbers and the M0–M11 total at roughly 20–25 focused days for a first implementation. Cut M8b, A13, and verse polish before cutting the ingest round-trip, the glossary verification loop, the critics, or the EPUB writer. **Every milestone ends with `ruff check`, `mypy`, and `pytest -q` green.**
 
 ### M0 — Skeleton, config, provider layer, accounting (~0.5 day)
-Deliverables: `pyproject.toml`, package tree, `config.py` (defaults + YAML merge + env overrides), `db.py` + `schema.sql` (all tables, `PRAGMA` settings, migration hook), `ids.py`, `tokens.py`, `cost.py`, `errors.py`, `logging.py`, `provider.py` + `mock_provider.py` + `litellm_provider.py`, `promptlib.py`, CLI shell with `tj doctor` and `tj estimate`, `configs/default.yaml` fully documented.
-Accept: `uv run tj doctor` exits 0 without keys (warns, does not fail); `uv run pytest -q` green; `ruff`/`mypy` clean; `MockProvider` returns a scripted response and `cost.py` records it; `tj estimate` prints the token table plus the three cost modes at peak and off-peak for a fixture.
+Deliverables: `pyproject.toml`, package tree, `config.py` (defaults + YAML merge + env overrides), `db.py` + `schema.sql` (all tables, `PRAGMA` settings, migration hook), `ids.py`, `tokens.py`, `cost.py`, `errors.py`, `logging.py`, `provider.py` + `mock_provider.py` + `litellm_provider.py`, `promptlib.py`, CLI shell with `shz doctor` and `shz estimate`, `configs/default.yaml` fully documented.
+Accept: `uv run shz doctor` exits 0 without keys (warns, does not fail); `uv run pytest -q` green; `ruff`/`mypy` clean; `MockProvider` returns a scripted response and `cost.py` records it; `shz estimate` prints the token table plus the three cost modes at peak and off-peak for a fixture.
 
 ### M1 — Ingest and segmentation (~3 days)
-Deliverables: format detection, **EPUB / PDF / DOCX / TXT readers**, block classifier, inline-node extraction, chapterization + `structure.yaml`, source normalization, segment creation, `books.import_quality`, `tj init`, `tj inspect`, and **`tests/fixtures/build.py`** — a generator that writes synthetic EPUB, DOCX, TXT and a 3-page text-layer PDF (headings, emphasis, links, footnote refs, a table, verse, an image; PDF via dev-only `reportlab`) so no third-party text is shipped.
-Accept: `tj init tests/fixtures/generated/book.epub` creates the workspace; `tj inspect` reports chapters/segments/tokens/markup nodes and PDF import quality; **round-trip test**: reconstruct HTML from nodes and compare to the normalized original for EPUB, DOCX and TXT (byte-equal); the generated PDF imports with `import_quality ≥ 0.7` and paragraph text matching the DOCX fixture within a 5% normalized edit distance; an image-only PDF fails with `PDF_NO_TEXT_LAYER`; re-init is idempotent (same ids/hashes); segment counts match paragraph counts.
+Deliverables: format detection, **EPUB / PDF / DOCX / TXT readers**, block classifier, inline-node extraction, chapterization + `structure.yaml`, source normalization, segment creation, `books.import_quality`, `shz init`, `shz inspect`, and **`tests/fixtures/build.py`** — a generator that writes synthetic EPUB, DOCX, TXT and a 3-page text-layer PDF (headings, emphasis, links, footnote refs, a table, verse, an image; PDF via dev-only `reportlab`) so no third-party text is shipped.
+Accept: `shz init tests/fixtures/generated/book.epub` creates the workspace; `shz inspect` reports chapters/segments/tokens/markup nodes and PDF import quality; **round-trip test**: reconstruct HTML from nodes and compare to the normalized original for EPUB, DOCX and TXT (byte-equal); the generated PDF imports with `import_quality ≥ 0.7` and paragraph text matching the DOCX fixture within a 5% normalized edit distance; an image-only PDF fails with `PDF_NO_TEXT_LAYER`; re-init is idempotent (same ids/hashes); segment counts match paragraph counts.
 
 ### M2 — Persian module (~1 day)
 Deliverables: `normalize.py` (N01–N09), `lint.py` (L01–L20 skeleton with L04–L10, L14 implemented), `punctuation.py`, `numerals.py`, `markup.py`, data files (`translationese_fa.txt`, `zwnj_forms.txt`, `protected_latin.txt`, stopwords).
 Accept: property test `normalize_fa(normalize_fa(x)) == normalize_fa(x)` on a 10k-char corpus; banned code points removed; a 50-case golden table of input→output pairs passes; each lint code has a positive and a negative fixture; no runtime import of `hazm`.
 
 ### M3 — Analysis, optional brief and glossary (~1.5 days)
-Deliverables: sample builder, `BriefAnalyst` (**auto-approved by default**; `--review-brief` enables the manual gate), `ChapterSummarizer`, `EntityExtractor` (+ deterministic capitalized-token scan), `GlossaryProposer`, `tj analyze`, `tj glossary *`, and the three glossary modes `off | provided | auto`.
+Deliverables: sample builder, `BriefAnalyst` (**auto-approved by default**; `--review-brief` enables the manual gate), `ChapterSummarizer`, `EntityExtractor` (+ deterministic capitalized-token scan), `GlossaryProposer`, `shz analyze`, `shz glossary *`, and the three glossary modes `off | provided | auto`.
 Accept: on a 2-chapter fixture the brief draft validates and is frozen automatically with `brief.approval: auto`; one summary per chapter; ≥ 20 ranked entity candidates in `auto` mode; `--glossary terms.yaml` validates and enables L03; the default `off` mode translates with **no glossary and no approval step**; `--review-brief` blocks until approved.
 
 ### M4 — Translation core, one chapter (~2 days)
-Deliverables: window planner, context packer, `Translator`, schema validation, cache, translation versioning, linters wired, risk score, `tj translate --chapters 1`, `tj qa`.
-Accept: chapter 1 translates end-to-end with the mock provider in CI, plus one manually documented smoke run against a real provider (result and cost recorded in `DECISIONS.md`); **the zero-config path works** — `tj init fixture.epub && tj translate --chapters 1` with no brief approval, no glossary, and no anchors reaches `done`; coverage 100%; all sentinels intact; `tj qa` writes flags; re-running with no changes creates **zero** new versions and reports ~100% cache hits; a deliberately broken mock (`markup_broken`) is caught by L02 and retried.
+Deliverables: window planner, context packer, `Translator`, schema validation, cache, translation versioning, linters wired, risk score, `shz translate --chapters 1`, `shz qa`.
+Accept: chapter 1 translates end-to-end with the mock provider in CI, plus one manually documented smoke run against a real provider (result and cost recorded in `DECISIONS.md`); **the zero-config path works** — `shz init fixture.epub && shz translate --chapters 1` with no brief approval, no glossary, and no anchors reaches `done`; coverage 100%; all sentinels intact; `shz qa` writes flags; re-running with no changes creates **zero** new versions and reports ~100% cache hits; a deliberately broken mock (`markup_broken`) is caught by L02 and retried.
 
 ### M4.5 — Gate 2: anchor calibration (~0.5 day)
-Deliverables: `tj translate --calibrate`, `tj anchors propose/approve/reject/list`, `anchors.draft.yaml`, anchor inclusion in the context pack, and the refusal rule (chapters 2+ require `anchors.yaml` unless `--no-anchors`).
+Deliverables: `shz translate --calibrate`, `shz anchors propose/approve/reject/list`, `anchors.draft.yaml`, anchor inclusion in the context pack, and the refusal rule (chapters 2+ require `anchors.yaml` unless `--no-anchors`).
 Accept: after chapter 1 is `done` and corrections are applied, `--calibrate` writes up to 3 candidates from deterministic selection; approving them writes `anchors.yaml` with a hash recorded in the DB; a run with anchors includes them in every window's pack (asserted from the rendered prompt in a unit test); a run **without** anchors continues with one warning, and `--require-anchors` turns that into an error.
 
 ### M5 — Critics, reviser, repair, budget (~1.5 days)
@@ -1273,29 +1273,29 @@ Deliverables: resume/continue, `--parallel-chapters`, `LedgerCurator`, chapter-c
 Accept: kill -9 mid-book, restart → resumes with no duplicate paid calls and completes; parallel mode produces all chapters and prints the coherence trade-off warning; one deliberately failing segment does not abort the run; `runs/<id>/report.md` exists with cost table.
 
 ### M7 — Review workflow (~1 day)
-Deliverables: `report.html` generator (self-contained, RTL, filters, edit + download), `corrections.jsonl` schema, `tj review apply`, flags CSV.
+Deliverables: `report.html` generator (self-contained, RTL, filters, edit + download), `corrections.jsonl` schema, `shz review apply`, flags CSV.
 Accept: report opens offline in a browser, filters by code/chapter/risk, exports corrections; applying corrections creates `pass=human` versions, flips `is_current`, resolves flags, re-runs lint; invalid correction (missing segment, broken sentinel) is rejected with an actionable error.
 
 ### M8a — EPUB 3 + Markdown export (~2 days)
 Deliverables: EPUB 3 writer (zipfile + lxml + templates + Vazirmatn WOFF2 + `OFL.txt`), OPF/nav/XHTML, CSS, internal validator, determinism, `--generated-at`; Markdown writer (front-matter, chapter headings, endnotes) and plain text.
-Accept: `tj export --formats epub,md,txt` produces all three; the EPUB has `mimetype` first and stored; `epubcheck` reports **0 errors** (if Java present; otherwise internal checks pass); spine `page-progression-direction="rtl"`, `dir/xml:lang` on every XHTML, CSS direction rtl, a11y metadata present; bidi test strings render correctly in Thorium/Calibre (manual, documented); two exports of an unchanged book are byte-identical; the Markdown round-trips headings/verse/endnotes and opens cleanly in pandoc.
+Accept: `shz export --formats epub,md,txt` produces all three; the EPUB has `mimetype` first and stored; `epubcheck` reports **0 errors** (if Java present; otherwise internal checks pass); spine `page-progression-direction="rtl"`, `dir/xml:lang` on every XHTML, CSS direction rtl, a11y metadata present; bidi test strings render correctly in Thorium/Calibre (manual, documented); two exports of an unchanged book are byte-identical; the Markdown round-trips headings/verse/endnotes and opens cleanly in pandoc.
 
 ### M8b — DOCX, PDF conversion, optional bilingual (~1.5 days)
-Deliverables: DOCX writer (RTL, endnotes) as the primary editable artifact, `tj export --pdf` via LibreOffice (graceful message when absent), `--bilingual` HTML side product, `--formats` selection.
-Accept: DOCX opens in Word/LibreOffice with RTL paragraphs and endnotes; PDF conversion produces a non-empty `%PDF` file when LibreOffice exists and prints the manual command when it does not, with the "not print-ready" caveat in the report; bilingual HTML is self-contained and correctly bidi-isolated; `tj export` refuses an incomplete book unless `--allow-incomplete`; bilingual output is absent by default.
+Deliverables: DOCX writer (RTL, endnotes) as the primary editable artifact, `shz export --pdf` via LibreOffice (graceful message when absent), `--bilingual` HTML side product, `--formats` selection.
+Accept: DOCX opens in Word/LibreOffice with RTL paragraphs and endnotes; PDF conversion produces a non-empty `%PDF` file when LibreOffice exists and prints the manual command when it does not, with the "not print-ready" caveat in the report; bilingual HTML is self-contained and correctly bidi-isolated; `shz export` refuses an incomplete book unless `--allow-incomplete`; bilingual output is absent by default.
 
 ### M9 — Audit and read-through (~1.5 days)
-Deliverables: `ConsistencyAuditor`, `ReadThroughEditor`, glossary/name audit, repair tasks, `tj audit`, aggregate report.
+Deliverables: `ConsistencyAuditor`, `ReadThroughEditor`, glossary/name audit, repair tasks, `shz audit`, aggregate report.
 Accept: a planted inconsistency (same character rendered two ways in chapters 1 and 3) is found; the read-through emits ≤ 5 issues/chapter and no automatic rewrites of `critical`-free prose; repairs create new versions and are listed in the report.
 
 ### M10 — Evaluation harness and bake-off (~2 days)
-Deliverables: golden-set loader, `QualityJudge`, `blp.py`, `mqm.py` (errors/1,000 words), `metrics.py`, `bakeoff.py`, calibration check, reports; `eval/calibration/reader/` (20 paragraphs) + `eval/calibration/ratings.json`. The ratings are **supplied by the release owner** (a professional Persian reader); the implementer builds the harness, the loader and the validation, and `tj eval calibrate` errors with instructions when `ratings.json` is missing rather than fabricating ratings.
+Deliverables: golden-set loader, `QualityJudge`, `blp.py`, `mqm.py` (errors/1,000 words), `metrics.py`, `bakeoff.py`, calibration check, reports; `eval/calibration/reader/` (20 paragraphs) + `eval/calibration/ratings.json`. The ratings are **supplied by the release owner** (a professional Persian reader); the implementer builds the harness, the loader and the validation, and `shz eval calibrate` errors with instructions when `ratings.json` is missing rather than fabricating ratings.
 
 **Thinking-mode experiment (mandatory, because "off" is a default, not a proof).** Four arms on the same `bench/` (60 paragraphs) + one chapter: (1) baseline, thinking off; (2) `thinking=low` on critics+reviser; (3) `thinking=low` on the draft; (4) `quality` mode (v4-pro critics). Record judge dimensions, latency, cost and `finish_reason` failures. **Adoption rule:** low-effort thinking may become an option for `quality` mode only if arm 2 or 3 improves human BWS/judge `style_fidelity` with no `fidelity` regression and stays inside the $10 cap at ≤ 2× wall-clock. It never becomes the `standard` default on the strength of one book.
-Accept: `tj eval judge --golden tests/golden/bench` produces a scores table and error spans; the judge reproduces the calibration ordering at τ ≥ 0.6 (or the harness fails loudly); bake-off runs on 2 mock models and writes `eval/reports/<date>.md`; regression policy documented and enforced by a make target. **Human MQM/BWS is the release owner's acceptance activity**, not something the implementer or CI can run — the harness prepares the packets (`eval/packets/*.csv`) and the report template; the plan does not pretend CI can measure literary quality.
+Accept: `shz eval judge --golden tests/golden/bench` produces a scores table and error spans; the judge reproduces the calibration ordering at τ ≥ 0.6 (or the harness fails loudly); bake-off runs on 2 mock models and writes `eval/reports/<date>.md`; regression policy documented and enforced by a make target. **Human MQM/BWS is the release owner's acceptance activity**, not something the implementer or CI can run — the harness prepares the packets (`eval/packets/*.csv`) and the report template; the plan does not pretend CI can measure literary quality.
 
 ### M11 — Polish and release (~1 day)
-Deliverables: README tutorial (install → init → analyze → approve → translate → review → export), `tj doctor` complete, example configs, CI (lint/type/unit; online tests opt-in), `CHANGELOG`, `v1.0.0` tag, end-to-end run on a public-domain novella with a real provider (documented, not in CI).
+Deliverables: README tutorial (install → init → analyze → approve → translate → review → export), `shz doctor` complete, example configs, CI (lint/type/unit; online tests opt-in), `CHANGELOG`, `v1.0.0` tag, end-to-end run on a public-domain novella with a real provider (documented, not in CI).
 Accept: fresh venv install works; the README tutorial produces a valid EPUB + DOCX + Markdown from a text-layer PDF and from an EPUB; CI green; all docs accurate against the code.
 
 ### M12+ (optional, not v1)
@@ -1310,7 +1310,7 @@ Local web UI for review; DelTA-style multi-tier memory if the ledger proves insu
 | R1 | Literary quality plateaus below publishable | Med | High | Preparation artifacts, dual critique, read-through pass, optional human checkpoints; set expectations as "editor-grade draft" not "final" |
 | R2 | Omissions/hallucinated additions slip through | Med | High | Per-segment JSON ids, L01/L08/L16/L19, fidelity critic, optional back-translation diagnostic (post-v1) |
 | R3 | Glossary drift across a book | High | Med | Three-layer enforcement (prompt, L03/L12, targeted repair), human approval, name-variant inventory |
-| R4 | Cost overrun on long books | Med | Med | `tj estimate` before spending, calibrated token accounting, budget cap, cache, tiered models |
+| R4 | Cost overrun on long books | Med | Med | `shz estimate` before spending, calibrated token accounting, budget cap, cache, tiered models |
 | R5 | Persian tokenization blows the context/output budget | High | Med | Target-side budget, calibration from usage, split windows on `finish_reason=length` |
 | R6 | Model deprecation / provider outage | High | Med | Model aliases in YAML, fallbacks, bake-off re-run, cache makes re-runs cheap |
 | R7 | EPUB/RTL compatibility bugs | Med | Med | epubcheck in CI, bidi test strings, Thorium/Calibre manual matrix, no font obfuscation |
@@ -1321,7 +1321,7 @@ Local web UI for review; DelTA-style multi-tier memory if the ledger proves insu
 | R12 | Scope creep (web UI, other languages, OCR, print PDF) | High | Med | Explicit non-goals; M12 backlog |
 | R13 | PDF extraction quality (columns, headers, hyphenation) | High | Med | `import_quality` score, mandatory `structure.yaml` below 0.6, `--accept-pdf-quality` override, generated PDF fixture in CI, "best-effort" documented |
 | R14 | Cheap model's Persian literary quality is below the bar | Med | High | Bake-off on the golden set; `quality` cost mode with `deepseek-v4-pro` critics/reviser; read-through pass; human spot check; report quality mode vs standard |
-| R15 | Cost/control regression from thinking mode or cache misses | Med | Med | `thinking: disabled` default asserted by `tj doctor` and a unit test; any per-agent override shown in the estimate and report; cache-hit ratio reported with alert below 50%; prefix byte-stability test; cost report states the tariff used |
+| R15 | Cost/control regression from thinking mode or cache misses | Med | Med | `thinking: disabled` default asserted by `shz doctor` and a unit test; any per-agent override shown in the estimate and report; cache-hit ratio reported with alert below 50%; prefix byte-stability test; cost report states the tariff used |
 
 ---
 

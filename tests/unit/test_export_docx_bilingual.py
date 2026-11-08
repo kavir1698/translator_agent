@@ -9,15 +9,16 @@ from docx import Document
 from lxml import etree
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.core.errors import RuntimeFailure
-from tarjoman.export.bilingual_html import write_bilingual_html
-from tarjoman.export.loader import load_export_book
-from tarjoman.pipeline.export_pass import ExportOptions, run_export
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad import PROJECT_URL
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.core.errors import RuntimeFailure
+from shahrzad.export.bilingual_html import write_bilingual_html
+from shahrzad.export.loader import load_export_book
+from shahrzad.pipeline.export_pass import ExportOptions, run_export
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, make_workspace
 
@@ -122,6 +123,7 @@ def test_docx_is_rtl_with_endnotes(
     assert "یادداشت‌ها" in text
     assert title in text
     assert footnote in text
+    assert PROJECT_URL in text
 
     root = etree.fromstring(document_xml)
     for paragraph in _paragraphs(root):
@@ -152,10 +154,12 @@ def test_docx_is_rtl_with_endnotes(
 
     document = Document(str(path))
     assert document.core_properties.author == "A. Writer"
-    assert document.core_properties.last_modified_by == "Tarjoman"
+    assert document.core_properties.last_modified_by == ""
+    assert document.core_properties.comments == PROJECT_URL
     assert len(document.tables) == 1
     paragraph_text = "\n".join(paragraph.text for paragraph in document.paragraphs)
     assert "یادداشت‌ها" in paragraph_text
+    assert PROJECT_URL in paragraph_text
 
 
 def test_bilingual_html_is_optional_and_self_contained(
@@ -194,7 +198,7 @@ def test_bilingual_html_is_optional_and_self_contained(
     assert "L14" in html
     assert "warn" in html
     assert "http://" not in html
-    assert "https://" not in html
+    assert PROJECT_URL in html
     assert "<script src" not in html.lower()
 
     settings = load_settings(root=isolated_home)
@@ -215,7 +219,7 @@ def test_pdf_without_libreoffice_keeps_docx(
 ) -> None:
     make_workspace(isolated_home, fixtures)
     _translate_all(isolated_home)
-    monkeypatch.setattr("tarjoman.export.pdf_convert.shutil.which", lambda _name: None)
+    monkeypatch.setattr("shahrzad.export.pdf_convert.shutil.which", lambda _name: None)
 
     result = _export(isolated_home, pdf=True)
     assert "docx" in result.paths
@@ -272,7 +276,7 @@ def test_cli_pdf_fallback_message(
 ) -> None:
     base = make_workspace(isolated_home, fixtures)
     _translate_all(isolated_home)
-    monkeypatch.setattr("tarjoman.export.pdf_convert.shutil.which", lambda _name: None)
+    monkeypatch.setattr("shahrzad.export.pdf_convert.shutil.which", lambda _name: None)
 
     result = runner.invoke(app, ["export", "--formats", "epub", "--pdf"])
     assert result.exit_code == 0, result.stdout
@@ -285,7 +289,7 @@ def test_cli_pdf_fallback_message(
 def test_pdf_conversion_verifies_non_empty_pdf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from tarjoman.export.pdf_convert import convert_docx_to_pdf
+    from shahrzad.export.pdf_convert import convert_docx_to_pdf
 
     docx = tmp_path / "book.fa.docx"
     docx.write_bytes(b"fake docx")
@@ -297,8 +301,8 @@ def test_pdf_conversion_verifies_non_empty_pdf(
         (out_dir / f"{docx.stem}.pdf").write_bytes(b"%PDF-1.4\nfake")
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("tarjoman.export.pdf_convert.shutil.which", lambda _name: "soffice")
-    monkeypatch.setattr("tarjoman.export.pdf_convert.subprocess.run", fake_run)
+    monkeypatch.setattr("shahrzad.export.pdf_convert.shutil.which", lambda _name: "soffice")
+    monkeypatch.setattr("shahrzad.export.pdf_convert.subprocess.run", fake_run)
 
     result = convert_docx_to_pdf(docx, tmp_path)
 
@@ -310,7 +314,7 @@ def test_pdf_conversion_verifies_non_empty_pdf(
 def test_pdf_does_not_reuse_stale_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from tarjoman.export.pdf_convert import convert_docx_to_pdf
+    from shahrzad.export.pdf_convert import convert_docx_to_pdf
 
     docx = tmp_path / "book.fa.docx"
     docx.write_bytes(b"fake docx")
@@ -320,8 +324,8 @@ def test_pdf_does_not_reuse_stale_output(
     def fake_run(command, **kwargs):  # noqa: ANN001, ANN003
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr("tarjoman.export.pdf_convert.shutil.which", lambda _name: "soffice")
-    monkeypatch.setattr("tarjoman.export.pdf_convert.subprocess.run", fake_run)
+    monkeypatch.setattr("shahrzad.export.pdf_convert.shutil.which", lambda _name: "soffice")
+    monkeypatch.setattr("shahrzad.export.pdf_convert.subprocess.run", fake_run)
 
     result = convert_docx_to_pdf(docx, tmp_path)
 

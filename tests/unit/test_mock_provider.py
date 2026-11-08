@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from tarjoman.core.errors import MissingFixture
-from tarjoman.core.models import TranslatorOutput
-from tarjoman.llm.mock_provider import MockProvider, MockProviderFailure, fixture_key
-from tarjoman.llm.provider import Message
-from tarjoman.llm.schema import build_response_schema
+from shahrzad.core.errors import MissingFixture
+from shahrzad.core.models import TranslatorOutput
+from shahrzad.llm.mock_provider import MockProvider, MockProviderFailure, fixture_key
+from shahrzad.llm.provider import Message
+from shahrzad.llm.schema import build_response_schema
 
 
 def _messages() -> list[Message]:

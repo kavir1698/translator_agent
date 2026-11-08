@@ -10,14 +10,14 @@ import pytest
 from lxml import html as lxml_html
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.errors import RuntimeFailure
-from tarjoman.pipeline.qa_pass import run_qa
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
-from tarjoman.review.corrections import apply_corrections
-from tarjoman.review.report import ReviewBuildOptions, build_report
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.errors import RuntimeFailure
+from shahrzad.pipeline.qa_pass import run_qa
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.review.corrections import apply_corrections
+from shahrzad.review.report import ReviewBuildOptions, build_report
 
 from .support import SmartProvider, count_versions, make_workspace
 

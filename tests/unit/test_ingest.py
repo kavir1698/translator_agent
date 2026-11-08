@@ -9,14 +9,14 @@ import pytest
 from lxml import html as lxml_html
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.db import Database
-from tarjoman.core.errors import ConfigError, PdfNoTextLayer
-from tarjoman.ingest.blocks import BlockKind, iter_blocks
-from tarjoman.ingest.normalize_source import normalized_for_compare
-from tarjoman.ingest.reader import read_source
-from tarjoman.pipeline.init_pass import init_book
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.db import Database
+from shahrzad.core.errors import ConfigError, PdfNoTextLayer
+from shahrzad.ingest.blocks import BlockKind, iter_blocks
+from shahrzad.ingest.normalize_source import normalized_for_compare
+from shahrzad.ingest.reader import read_source
+from shahrzad.pipeline.init_pass import init_book
 from tests.fixtures.build import SAMPLE_PARAGRAPHS
 
 runner = CliRunner()
@@ -30,7 +30,7 @@ def _assert_roundtrip(result) -> None:
 
 
 def test_epub_reader_parses_utf8_before_charset_declaration():
-    from tarjoman.ingest.epub_reader import _parse_html
+    from shahrzad.ingest.epub_reader import _parse_html
 
     raw = (
         "<html><head><title>Café “quoted”</title><meta charset=\"utf-8\"/></head>"

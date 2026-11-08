@@ -1,8 +1,8 @@
-# Tarjoman configuration — every key is required to exist in this file (defaults),
+# Shahrzad configuration — every key is required to exist in this file (defaults),
 # book configs override a subset. Values shown are the defaults.
 
 project:
-  name: tarjoman
+  name: shahrzad
   books_dir: books
   timezone: UTC
 
@@ -11,7 +11,7 @@ book:
   source_lang: en
   target_lang: fa              # fa-IR content; dc:language is "fa"
   rights_basis: user_supplied  # informational only: public_domain | licensed | user_supplied
-  translator: "Tarjoman"
+  translator: ""               # optional human translator credit; empty by default
   title_fa: null               # Persian dc:title; set this for an all-Persian export
   cover: null                  # path override; default uses source cover
 

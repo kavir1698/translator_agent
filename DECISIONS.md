@@ -2,14 +2,14 @@
 
 One line per choice where the spec was silent or the simplest option was chosen. Milestone prefix.
 
-- M0: The project lives at the spec-folder root (`pyproject.toml` + `src/tarjoman/`), so `books/` and `configs/` match the planned paths.
+- M0: The project lives at the spec-folder root (`pyproject.toml` + `src/shahrzad/`), so `books/` and `configs/` match the planned paths.
 - M0: Provider calls are synchronous (`Provider.complete` exactly as plan §9.1); pipeline concurrency will be a thread pool over independent windows, not an asyncio rewrite.
 - M0: `BaseSettings` source order is env → dotenv → init(YAML) → secrets, because plan §4 requires env to override YAML.
-- M0: Model tiers carry their own `pricing_usd_per_mtok`; `deepseek-v4-pro` is priced at 8× flash (peak $1.20/M input, $4.80/M output) so `tj estimate` reproduces the plan's $4–6 quality-mode band. Replace with the official tariff when published.
-- M0: `tj estimate` falls back to a documented 90k-word profile when no book workspace exists; it never contacts a provider.
+- M0: Model tiers carry their own `pricing_usd_per_mtok`; `deepseek-v4-pro` is priced at 8× flash (peak $1.20/M input, $4.80/M output) so `shz estimate` reproduces the plan's $4–6 quality-mode band. Replace with the official tariff when published.
+- M0: `shz estimate` falls back to a documented 90k-word profile when no book workspace exists; it never contacts a provider.
 - M0: Cache hits are reported as `LLMResult(cached_tokens=input tokens, cost_usd=0, finish_reason="cache")`; the agents layer records them as `cached=1`.
 - M0: `tests/fixtures` starts empty; M1's fixture builder will generate books there. No third-party text is shipped.
-- M0: `tj doctor --models` only pings when an API key is present; without one it reports a warning and still exits 0 (acceptance requirement).
+- M0: `shz doctor --models` only pings when an API key is present; without one it reports a warning and still exits 0 (acceptance requirement).
 - M0: Prompt P13 is extracted verbatim for reference but not wired (post-v1, per PROMPTS.md).
 
 ## M1 — ingest and segmentation
@@ -17,9 +17,9 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M1: A block's inline nodes carry a hidden `tag~N` occurrence marker in `path` steps so sibling elements of the same tag rebuild with the right boundaries; the marker never reaches HTML (the tag is parsed back out).
 - M1: A table block is one segment in v1 (`source_text` = rows joined with ` | `), while the full table HTML is preserved in its node list for byte-exact round-trip. Cell-level segments are deferred to M4; recorded here because plan 6.0.6 prefers cells.
 - M1: PDF lines are clustered by baseline (box bottom), not box top, because ascenders/descenders otherwise split one visual line; paragraph breaks come from vertical gaps and indentation.
-- M1: `tj init` reads `artifacts/structure.yaml` when present (created by hand or by `--force` re-init); there is no `--structure` flag in the v1 CLI surface.
+- M1: `shz init` reads `artifacts/structure.yaml` when present (created by hand or by `--force` re-init); there is no `--structure` flag in the v1 CLI surface.
 - M1: DOCX hyperlinks and footnotes are not exposed by python-docx; they are documented limitations (the reader records skipped elements in `metadata.json`).
-- M1: `tj inspect --diff` compares the stored SHA-256 with the extracted original file; per-segment diffing arrives with `tj retranslate --stale-only` in M6.
+- M1: `shz inspect --diff` compares the stored SHA-256 with the extracted original file; per-segment diffing arrives with `shz retranslate --stale-only` in M6.
 
 ## M2 — Persian module
 - M2: `normalize_fa` takes `strip_edges`; markup text runs are normalized with `strip_edges=False` so spaces between a sentinel and its run are not eaten.
@@ -28,23 +28,23 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M2: L19 is approximated from chapter HTML (every `href="#x"` needs an `id="x"` and every footnote segment a translation) until footnote target ids are modelled in M4.
 
 ## M3 — analysis, brief and optional glossary
-- M3: `tj analyze --review-brief` (and `pipeline.analyze.brief_approval: manual`) writes the draft and exits 3 (paused), so the next command is explicit (`tj analyze --approve`); it never sits interactively.
+- M3: `shz analyze --review-brief` (and `pipeline.analyze.brief_approval: manual`) writes the draft and exits 3 (paused), so the next command is explicit (`shz analyze --approve`); it never sits interactively.
 - M3: `--draft-only` stops after `brief.draft.yaml` and does not freeze even when approval is `auto`.
-- M3: An approved `brief.yaml` is reused on later `tj analyze` runs; `--only <chapter>` limits summaries/entities to that chapter but still uses the whole-book brief.
+- M3: An approved `brief.yaml` is reused on later `shz analyze` runs; `--only <chapter>` limits summaries/entities to that chapter but still uses the whole-book brief.
 - M3: Chapters over 8,000 tokens are summarized in two chunk calls, then P02 is called once more with both chunk summaries as the data source to merge them; if that merge call still fails schema validation, a deterministic union/join fallback is used.
 - M3: The deterministic proper-noun scan keeps capitalized tokens seen mid-sentence or at least twice, with a small English common-word blocklist; LLM entities are merged by `rapidfuzz` token-set ratio ≥ 90 and the most frequent surface wins.
 - M3: In `auto` mode only proposals at or above `glossary.auto_approve_min_confidence` are approved automatically; lower-confidence character/place entries stay `proposed` and are gate-1b blockers.
 - M3: `provided` mode parses YAML (`entries:`) or CSV (`en,fa[,kind,...]`), forces entries to `approved`, and writes `artifacts/glossary.yaml`; `sync` re-imports that artifact honoring each entry's status and marks DB entries missing from the artifact `deprecated` (it is the source of truth).
-- M3: Glossary suggestions are stored with `status=pending`; `tj glossary pending` lists them. Promotion into an approved entry stays a human action.
+- M3: Glossary suggestions are stored with `status=pending`; `shz glossary pending` lists them. Promotion into an approved entry stays a human action.
 - M3: `BookBrief.register` now uses `Field(...)`; without it Pydantic silently defaulted the field to the metaclass `register` method and omitted it from the JSON schema's required list.
-- M3: CLI offline runs can set `TARJOMAN_MOCK_FIXTURES=<dir>` to use `MockProvider`; the real provider remains the default.
+- M3: CLI offline runs can set `SHAHRZAD_MOCK_FIXTURES=<dir>` to use `MockProvider`; the real provider remains the default.
 
 ## Model policy (product owner, 2026-11-05)
 - M3+: `deepseek-v4-pro` is never used. DeepSeek V4.1 Flash is the default draft/critic model (DeepSeek API, `DEEPSEEK_API_KEY`).
 - The separate quality/reviewer/judge model is `gpt-6-luna` via OpenRouter (`OPENROUTER_API_KEY`), configured per tier in `configs/models/deepseek.yaml`.
 - Model tiers may declare `provider`, `base_url` and `api_key_env`; `LiteLLMProvider` resolves the key and endpoint per tier, so one profile can span two providers.
 - `provider.api_base` was removed: endpoint selection belongs to the model profile tier, avoiding a second conflicting source of truth.
-- `gpt-6-luna` pricing in the profile is an estimation placeholder; replace it with the current OpenRouter tariff before relying on `tj estimate` for quality-mode budgets.
+- `gpt-6-luna` pricing in the profile is an estimation placeholder; replace it with the current OpenRouter tariff before relying on `shz estimate` for quality-mode budgets.
 
 ## Post-review fixes
 - Force re-init archives the entire workspace under `backups/<slug>.bak-<ts>/` and removes all DB/WAL/SHM files before rebuilding; the same-hash early return is bypassed when `--force` is set.
@@ -64,7 +64,7 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M4: Prompt templates now wrap optional blocks in Jinja conditionals so an empty glossary/cast/anchor block leaves no empty heading for the model to fill.
 - M4: No real-provider smoke run was performed in this environment; the mock-provider acceptance run is the recorded evidence.
 ## M4.5 — anchor calibration
-- M4.5: `tj anchors propose` selects up to 3 deterministic pairs from the first body chapter (longest non-dialogue prose, highest dialogue ratio, most inline emphasis; tie-break by segment id). Approval requires 2–3 pairs and records `anchors_hash` in `books.metadata_json` and the run artifact hashes.
+- M4.5: `shz anchors propose` selects up to 3 deterministic pairs from the first body chapter (longest non-dialogue prose, highest dialogue ratio, most inline emphasis; tie-break by segment id). Approval requires 2–3 pairs and records `anchors_hash` in `books.metadata_json` and the run artifact hashes.
 - M4.5: Missing anchors only warn when the selected scope includes chapter 2+; `--require-anchors` turns that into a configuration error. `--no-anchors` skips them entirely; combining the two flags is a usage error.
 ## M5 — critics, reviser, budget
 - M5: Critics run sequentially (not in parallel) to keep the synchronous provider/cache path deterministic; the budget guard is re-checked before each critic, revision, repair and ledger call.
@@ -76,7 +76,7 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - M6: `--replan` retranslates the selected scope as new versions (append-only history) instead of only bypassing the plan-hash check.
 - M6: `runs/<id>/report.md` includes status, tariff, cost mode, coverage, cache hit rate, cost by agent, cost/1k words and the 20 riskiest segments; the manifest reads actual prompt versions and token calibrations, and marks a no-brief run `experimental`.
 ## M7 — review workflow
-- M7: `tj review build` always rebuilds `review/report.html` from the live DB after a scoped `run_qa`; the report lists every in-scope segment (flagged rows carry their QA risk/codes) so reviewers can inspect beyond the flagged sample, with client-side filters.
+- M7: `shz review build` always rebuilds `review/report.html` from the live DB after a scoped `run_qa`; the report lists every in-scope segment (flagged rows carry their QA risk/codes) so reviewers can inspect beyond the flagged sample, with client-side filters.
 - M7: Corrections are parsed and markup-validated in full before the first DB write; any invalid line aborts the whole file with the 1-based line, segment id and problem codes.
 - M7: Accepted corrections insert `pass=human`/`model=human` versions and keep the current version's glossary hash/terms; status moves to `done` only when no open `qa` error/critical remains, otherwise `flagged`, via a BFS over `_SEGMENT_TRANSITIONS`.
 - M7: `needs_work` writes `REVIEW_NEEDS_WORK` (stage `qa`, severity `warn`) after the re-lint (so `run_qa` cannot resolve it immediately) and forces the segment to `flagged`.
@@ -111,7 +111,7 @@ One line per choice where the spec was silent or the simplest option was chosen.
 
 ## Post-review hardening (M7/M8)
 - Review state: `run_qa` now accepts `QaOptions.preserve_flags`; review build/apply use it. Existing `reviewed`/`reviewer_note` values are merged by segment id, out-of-scope rows are retained, and `flags.csv` is replaced atomically (temp + replace). `corrections` reuses the shared `FLAGS_COLUMNS`/`build_flag_row` instead of duplicating the schema.
-- Corrections: payloads now carry `translation_version`; review stores it on each report row and `tj review apply` refuses a stale version unless `--force` is passed. Reviewer notes are CSV-formula-neutralized. The review report is written atomically.
+- Corrections: payloads now carry `translation_version`; review stores it on each report row and `shz review apply` refuses a stale version unless `--force` is passed. Reviewer notes are CSV-formula-neutralized. The review report is written atomically.
 - Export safety: EPUB/DOCX/Markdown/plain/bilingual outputs are written to temp paths and replaced only after success; EPUB validates the temp archive, and a present-but-broken epubcheck logs a warning instead of aborting. PDF conversion uses a pristine temp outdir so an old `<stem>.pdf` cannot be reported as current.
 - Source safety: EPUB XHTML serialization now allowlists tags/attributes, drops active content and unsafe URLs, and the internal validator rejects active content; source ZIP reads use per-entry/total/ratio budgets from `assets.py`. Markdown URLs are scheme-checked and percent-encoded.
 - Bidi source sanitization keeps heading/verse/table/footnote structure; chapter endnotes remain per-chapter.
@@ -119,12 +119,12 @@ One line per choice where the spec was silent or the simplest option was chosen.
 - Performance: export loading batches segments/current translations/issues, review loading batches translations/issues and reuses the glossary-match map, and each segment HTML fragment is parsed once during rendering. EPUB validation still re-reads the finished archive by design (archive integrity), and DOCX deterministic rewriting streams one entry at a time.
 
 ## M11 — polish and release
-- M11: Version is `1.0.0` in `pyproject.toml` and `tarjoman.__version__`. Creating the git tag `v1.0.0` is a release step; no tag or commit is created by the M11 working-tree change.
-- M11: README is a user guide, not a build handoff. The tutorial order is install → init → optional analyze/approve → translate → audit → optional review → export; the zero-config path is `init → translate → export`, with `tj analyze` documented as optional because translate otherwise uses the built-in default brief and marks the run experimental.
-- M11: The command reference is generated from the real typer surface. `tj eval` is absent and the README states that the M10 evaluation harness/bake-off is deferred. `tj translate --review-brief` is documented as a no-op warning; the real manual brief gate is `tj analyze --review-brief` followed by `tj analyze --approve`.
-- M11: `tj doctor` adds package version, required-package imports/versions (`python-docx`, `pypdfium2`, `litellm`), a writable/created `books` directory, bundled export-font presence, and workspace checks (`PRAGMA quick_check`, schema version, book/chapter/segment counts, optional artifacts). Missing `brief.yaml`/`glossary.yaml` are informational; missing anchors are a warning only when the workspace has 2+ chapters. Every new check is offline; warnings still exit 0 and the `{"checks", "failed"}` JSON shape is unchanged.
+- M11: Version is `1.0.0` in `pyproject.toml` and `shahrzad.__version__`. Creating the git tag `v1.0.0` is a release step; no tag or commit is created by the M11 working-tree change.
+- M11: README is a user guide, not a build handoff. The tutorial order is install → init → optional analyze/approve → translate → audit → optional review → export; the zero-config path is `init → translate → export`, with `shz analyze` documented as optional because translate otherwise uses the built-in default brief and marks the run experimental.
+- M11: The command reference is generated from the real typer surface. `shz eval` is absent and the README states that the M10 evaluation harness/bake-off is deferred. `shz translate --review-brief` is documented as a no-op warning; the real manual brief gate is `shz analyze --review-brief` followed by `shz analyze --approve`.
+- M11: `shz doctor` adds package version, required-package imports/versions (`python-docx`, `pypdfium2`, `litellm`), a writable/created `books` directory, bundled export-font presence, and workspace checks (`PRAGMA quick_check`, schema version, book/chapter/segment counts, optional artifacts). Missing `brief.yaml`/`glossary.yaml` are informational; missing anchors are a warning only when the workspace has 2+ chapters. Every new check is offline; warnings still exit 0 and the `{"checks", "failed"}` JSON shape is unchanged.
 - M11: The export completeness gate raises `IncompleteError` (`RuntimeFailure` subclass) so export exits 4, matching the documented exit-code contract; `IncompleteError` previously existed but was unused and not a `RuntimeFailure`.
 - M11: `configs/sample.book.yaml` is a fully commented, valid per-book override covering every `Settings` section; two minimal examples add an economy budget and auto-glossary mode. No new config keys were introduced.
 - M11: CI is GitHub Actions on `ubuntu-latest` with `astral-sh/setup-uv`, `uv sync --frozen --dev`, `ruff check`, `mypy`, and `pytest -q -m "not online"`; a dependent job runs `uv build`. CI uses no secrets and makes no provider calls; online tests remain opt-in.
 - M11: **No real-provider or public-domain-novella run was performed here**; network and real-key execution were out of scope for this build (key presence is checked only, never printed). The acceptance evidence is the offline mock-provider suite (`tests/integration/test_tutorial_e2e.py` covers both EPUB and text-layer PDF), not a real literary-quality or cost claim. The fixture generator's text is synthetic, not a public-domain novella.
-- M11: M10 is deliberately skipped and no `tj eval` command was added; mechanical QA (linters, audit/read-through) is the shipped quality tooling.
+- M11: M10 is deliberately skipped and no `shz eval` command was added; mechanical QA (linters, audit/read-through) is the shipped quality tooling.

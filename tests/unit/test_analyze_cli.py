@@ -4,10 +4,10 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.llm.mock_provider import MockProvider
-from tarjoman.pipeline.init_pass import init_book
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.llm.mock_provider import MockProvider
+from shahrzad.pipeline.init_pass import init_book
 
 runner = CliRunner()
 
@@ -57,7 +57,7 @@ def test_review_brief_exits_three_then_approve(
     base = _init(isolated_home, fixtures)
     provider = MockProvider(script=[_brief_payload()])
     monkeypatch.setattr(
-        "tarjoman.cli.analyze_cmd.build_provider", lambda _context: provider
+        "shahrzad.cli.analyze_cmd.build_provider", lambda _context: provider
     )
     result = runner.invoke(app, ["analyze", "--review-brief"])
     assert result.exit_code == 3, result.stdout
@@ -66,7 +66,7 @@ def test_review_brief_exits_three_then_approve(
     assert "waiting for approval" in result.stdout.lower()
 
     monkeypatch.setattr(
-        "tarjoman.cli.analyze_cmd.build_provider",
+        "shahrzad.cli.analyze_cmd.build_provider",
         lambda _context: MockProvider(script=[]),
     )
     approved = runner.invoke(app, ["analyze", "--approve"])

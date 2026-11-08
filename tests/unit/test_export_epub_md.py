@@ -8,15 +8,16 @@ import pytest
 from lxml import etree
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.core.errors import RuntimeFailure
-from tarjoman.export.epub_writer import validate_epub
-from tarjoman.export.xhtml import isolate_latin
-from tarjoman.pipeline.export_pass import ExportOptions, run_export
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad import PROJECT_URL
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.core.errors import RuntimeFailure
+from shahrzad.export.epub_writer import validate_epub
+from shahrzad.export.xhtml import isolate_latin
+from shahrzad.pipeline.export_pass import ExportOptions, run_export
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, make_workspace
 
@@ -85,6 +86,7 @@ def test_export_epub_md_txt_structure(
         assert spine is not None
         assert spine.get("page-progression-direction") == "rtl"
         assert opf.xpath("//*[local-name()='language']")[0].text == "fa"
+        assert not opf.xpath("//*[local-name()='contributor']")
 
         properties = {
             str(meta.get("property"))
@@ -127,6 +129,9 @@ def test_export_epub_md_txt_structure(
             assert b"<script" not in data.lower(), path
             assert not re.search(rb'(?:src|href)="(?:https?:)?//', data.lower()), path
 
+        colophon = archive.read("OEBPS/text/colophon.xhtml")
+        assert PROJECT_URL.encode() in colophon
+
     assert validate_epub(result.paths["epub"]) == []
 
 
@@ -156,10 +161,30 @@ def test_markdown_and_plain_text_content(
     assert "\n## یادداشت‌ها" in markdown
     assert "[↩]" in markdown
     assert "<a id=" in markdown
+    assert PROJECT_URL in markdown
 
     plain = result.paths["txt"].read_text(encoding="utf-8")
     assert "\n# " in plain or plain.startswith("# ")
     assert "یادداشت‌ها" in plain
+    assert PROJECT_URL in plain
+
+
+def test_legacy_tool_name_is_not_an_export_credit(
+    isolated_home: Path, fixtures: dict[str, Path]
+) -> None:
+    base = make_workspace(isolated_home, fixtures)
+    _translate_all(isolated_home)
+    with Database(base / "book.db") as database:
+        database.execute("UPDATE books SET translator = ?", ("Tarjoman",))
+
+    result = _export(isolated_home)
+    with zipfile.ZipFile(result.paths["epub"]) as archive:
+        opf = etree.fromstring(archive.read("OEBPS/content.opf"))
+        colophon = archive.read("OEBPS/text/colophon.xhtml")
+
+    assert not opf.xpath("//*[local-name()='contributor']")
+    assert b"Tarjoman" not in colophon
+    assert PROJECT_URL.encode() in colophon
 
 
 def test_isolate_latin_unit_cases() -> None:
@@ -222,7 +247,7 @@ def test_incomplete_gate_and_warning_page(
             options=ExportOptions(formats=["epub"]),
         )
     assert "--allow-incomplete" in str(raised.value)
-    assert "tj translate" in str(raised.value)
+    assert "shz translate" in str(raised.value)
 
     allowed = run_export(
         root=isolated_home,
@@ -248,7 +273,7 @@ def test_cli_export_smoke(isolated_home: Path, fixtures: dict[str, Path]) -> Non
         assert (base / "out" / f"test-book.fa.{extension}").is_file()
 
 def _unsafe_segment(nodes, markup: str = "⟨1⟩x⟨/1⟩"):
-    from tarjoman.export.models import ExportSegment
+    from shahrzad.export.models import ExportSegment
 
     return ExportSegment(
         id="c001.s9999",
@@ -267,8 +292,8 @@ def _unsafe_segment(nodes, markup: str = "⟨1⟩x⟨/1⟩"):
 def test_render_segment_keeps_block_wrapper() -> None:
     from dataclasses import replace
 
-    from tarjoman.export.assets import SourceAssets
-    from tarjoman.export.xhtml import render_segment
+    from shahrzad.export.assets import SourceAssets
+    from shahrzad.export.xhtml import render_segment
 
     prose = _unsafe_segment(
         [{"id": 1, "path": [], "kind": "text", "text": "سلام"}], markup="سلام"
@@ -283,8 +308,8 @@ def test_render_segment_keeps_block_wrapper() -> None:
 
 
 def test_active_source_markup_is_sanitized() -> None:
-    from tarjoman.export.assets import ImageAsset, SourceAssets
-    from tarjoman.export.xhtml import render_segment
+    from shahrzad.export.assets import ImageAsset, SourceAssets
+    from shahrzad.export.xhtml import render_segment
 
     linked = _unsafe_segment(
         [{"id": 1, "path": ["a|href=javascript:alert(1)"], "kind": "text", "text": "click"}]
@@ -317,7 +342,7 @@ def test_active_source_markup_is_sanitized() -> None:
 def test_zip_image_budget_rejects_expansion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from tarjoman.export import assets
+    from shahrzad.export import assets
 
     archive_path = tmp_path / "bomb.epub"
     with zipfile.ZipFile(archive_path, "w") as archive:
@@ -329,7 +354,7 @@ def test_zip_image_budget_rejects_expansion(
 
 
 def test_markdown_links_are_scheme_checked_and_escaped() -> None:
-    from tarjoman.export.markdown_writer import _inline_markdown
+    from shahrzad.export.markdown_writer import _inline_markdown
 
     assert "javascript:" not in _inline_markdown(
         '<a href=" javascript:alert(1)">click</a>', set()
@@ -365,9 +390,9 @@ def test_persian_title_is_used_when_set(
 def test_failed_validation_keeps_existing_epub(
     isolated_home: Path, fixtures: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from tarjoman.export.assets import load_source_assets
-    from tarjoman.export.epub_writer import write_epub
-    from tarjoman.export.loader import load_export_book
+    from shahrzad.export.assets import load_source_assets
+    from shahrzad.export.epub_writer import write_epub
+    from shahrzad.export.loader import load_export_book
 
     base = make_workspace(isolated_home, fixtures)
     _translate_all(isolated_home)
@@ -378,7 +403,7 @@ def test_failed_validation_keeps_existing_epub(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(b"previous good epub")
 
-    monkeypatch.setattr("tarjoman.export.epub_writer.validate_epub", lambda _path: ["boom"])
+    monkeypatch.setattr("shahrzad.export.epub_writer.validate_epub", lambda _path: ["boom"])
     with pytest.raises(RuntimeFailure):
         write_epub(book, target, settings, assets)
     assert target.read_bytes() == b"previous good epub"
@@ -387,13 +412,13 @@ def test_failed_validation_keeps_existing_epub(
 def test_broken_epubcheck_does_not_abort_export(
     isolated_home: Path, fixtures: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from tarjoman.export.epub_writer import _run_epubcheck
+    from shahrzad.export.epub_writer import _run_epubcheck
 
     make_workspace(isolated_home, fixtures)
-    monkeypatch.setattr("tarjoman.export.epub_writer.shutil.which", lambda _name: "epubcheck")
+    monkeypatch.setattr("shahrzad.export.epub_writer.shutil.which", lambda _name: "epubcheck")
 
     def fail(*args, **kwargs):
         raise OSError("java missing")
 
-    monkeypatch.setattr("tarjoman.export.epub_writer.subprocess.run", fail)
+    monkeypatch.setattr("shahrzad.export.epub_writer.subprocess.run", fail)
     _run_epubcheck(Path("missing.epub"), load_settings(root=isolated_home))

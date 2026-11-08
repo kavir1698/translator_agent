@@ -5,10 +5,10 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.db import Database
-from tarjoman.pipeline.init_pass import init_book
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.db import Database
+from shahrzad.pipeline.init_pass import init_book
 
 runner = CliRunner()
 

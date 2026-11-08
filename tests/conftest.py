@@ -21,11 +21,11 @@ def fixtures(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
 
 @pytest.fixture
 def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A TARJOMAN_HOME with the shipped configs and no books."""
+    """A SHAHRZAD_HOME with the shipped configs and no books."""
     import shutil
 
     shutil.copytree(REPO_ROOT / "configs", tmp_path / "configs")
     (tmp_path / "books").mkdir()
-    monkeypatch.setenv("TARJOMAN_HOME", str(tmp_path))
+    monkeypatch.setenv("SHAHRZAD_HOME", str(tmp_path))
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     return tmp_path

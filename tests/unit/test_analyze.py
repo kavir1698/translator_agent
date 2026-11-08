@@ -6,18 +6,18 @@ from typing import Any
 
 import yaml
 
-from tarjoman.core.config import load_settings, model_profile
-from tarjoman.core.db import Database
-from tarjoman.llm.mock_provider import MockProvider
-from tarjoman.persian.lint import (
+from shahrzad.core.config import load_settings, model_profile
+from shahrzad.core.db import Database
+from shahrzad.llm.mock_provider import MockProvider
+from shahrzad.persian.lint import (
     LintSegment,
     LintTranslation,
     LintWindow,
     check_window,
 )
-from tarjoman.pipeline.analyze_pass import build_sample, run_analyze
-from tarjoman.pipeline.glossary_ops import approved_terms
-from tarjoman.pipeline.init_pass import init_book
+from shahrzad.pipeline.analyze_pass import build_sample, run_analyze
+from shahrzad.pipeline.glossary_ops import approved_terms
+from shahrzad.pipeline.init_pass import init_book
 from tests.fixtures.build import ENTITY_NAMES
 
 
@@ -351,7 +351,7 @@ def test_only_chapter_limits_summaries(isolated_home, fixtures):
     with Database(base / "book.db") as db:
         book = db.get_book("test-book")
         assert book is not None
-        from tarjoman.agents.analyst import default_brief, freeze_brief
+        from shahrzad.agents.analyst import default_brief, freeze_brief
 
         _path, digest = freeze_brief(base, book_slug="test-book", brief=default_brief())
         db.set_book_brief_hash(int(book["id"]), digest)

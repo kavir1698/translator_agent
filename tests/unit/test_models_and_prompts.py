@@ -6,16 +6,16 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from tarjoman.core.errors import ConfigError, SchemaValidationError
-from tarjoman.core.models import (
+from shahrzad.core.errors import ConfigError, SchemaValidationError
+from shahrzad.core.models import (
     BookBrief,
     Critique,
     JudgeVerdict,
     TranslatorOutput,
     normalize_severity,
 )
-from tarjoman.llm.promptlib import load, load_all
-from tarjoman.llm.schema import (
+from shahrzad.llm.promptlib import load, load_all
+from shahrzad.llm.schema import (
     build_response_schema,
     canonical_quote,
     check_ids,
@@ -26,7 +26,7 @@ from tarjoman.llm.schema import (
 
 
 def test_all_prompts_load(repo_root: Path):
-    prompts = load_all(repo_root / "src" / "tarjoman" / "prompts")
+    prompts = load_all(repo_root / "src" / "shahrzad" / "prompts")
     assert len(prompts) == 13
     assert prompts["p05_translator"].version == 3
     assert prompts["p05_translator"].schema_name == "TranslatorOutput"
@@ -34,7 +34,7 @@ def test_all_prompts_load(repo_root: Path):
 
 
 def test_render_is_strict(repo_root: Path):
-    prompt = load("p01_brief", repo_root / "src" / "tarjoman" / "prompts")
+    prompt = load("p01_brief", repo_root / "src" / "shahrzad" / "prompts")
     rendered = prompt.render(
         {
             "book_title": "T",
@@ -50,7 +50,7 @@ def test_render_is_strict(repo_root: Path):
 
 
 def test_hash_is_stable(repo_root: Path):
-    prompt = load("p01_brief", repo_root / "src" / "tarjoman" / "prompts")
+    prompt = load("p01_brief", repo_root / "src" / "shahrzad" / "prompts")
     variables = {
         "book_title": "T",
         "book_author": "A",

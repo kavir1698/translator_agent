@@ -7,15 +7,15 @@ import re
 from pathlib import Path
 from typing import Any
 
-from tarjoman.context.packer import ledger_slice
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.llm.provider import LLMResult
-from tarjoman.pipeline.anchors_pass import propose_anchors
-from tarjoman.pipeline.qa_pass import QaOptions, run_qa
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
-from tarjoman.pipeline.window import plan_windows
+from shahrzad.context.packer import ledger_slice
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.llm.provider import LLMResult
+from shahrzad.pipeline.anchors_pass import propose_anchors
+from shahrzad.pipeline.qa_pass import QaOptions, run_qa
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.pipeline.window import plan_windows
 
 from .support import SmartProvider, make_workspace
 

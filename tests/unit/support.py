@@ -8,11 +8,11 @@ import re
 from pathlib import Path
 from typing import Any
 
-from tarjoman.core.config import load_settings
-from tarjoman.core.ids import sha256_text
-from tarjoman.core.tokens import estimate_tokens_en
-from tarjoman.llm.provider import LLMResult, Message, messages_json
-from tarjoman.pipeline.init_pass import init_book
+from shahrzad.core.config import load_settings
+from shahrzad.core.ids import sha256_text
+from shahrzad.core.tokens import estimate_tokens_en
+from shahrzad.llm.provider import LLMResult, Message, messages_json
+from shahrzad.pipeline.init_pass import init_book
 
 _SENTINEL = re.compile(r"⟨/?\d+⟩|⟦/?\d+⟧|\[\[#?\d+\]\]|\[\[/\d+\]\]")
 _WORD = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+)?")

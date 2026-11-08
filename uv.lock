@@ -2931,7 +2931,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tarjoman"
+name = "shahrzad"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

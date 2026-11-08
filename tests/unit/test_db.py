@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from tarjoman.core.db import Database
-from tarjoman.core.errors import InvalidTransition, RuntimeFailure
+from shahrzad.core.db import Database
+from shahrzad.core.errors import InvalidTransition, RuntimeFailure
 
 
 @pytest.fixture

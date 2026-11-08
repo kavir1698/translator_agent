@@ -5,12 +5,12 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.pipeline.audit_pass import AuditOptions, run_audit
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.pipeline.audit_pass import AuditOptions, run_audit
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 
 from .support import SmartProvider, count_versions, make_workspace
 
@@ -254,4 +254,4 @@ def test_cli_audit_without_translations_is_a_config_error(
 
     result = runner.invoke(app, ["audit", "--chapter", "1", "--no-readthrough"])
     assert result.exit_code == 2, result.output
-    assert "tj translate" in result.output
+    assert "shz translate" in result.output

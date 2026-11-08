@@ -10,12 +10,12 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import load_settings
-from tarjoman.core.cost import load_model_profile
-from tarjoman.export.epub_writer import validate_epub
-from tarjoman.pipeline.export_pass import ExportOptions, run_export
-from tarjoman.pipeline.translate_pass import TranslateOptions, run_translate
+from shahrzad.cli.main import app
+from shahrzad.core.config import load_settings
+from shahrzad.core.cost import load_model_profile
+from shahrzad.export.epub_writer import validate_epub
+from shahrzad.pipeline.export_pass import ExportOptions, run_export
+from shahrzad.pipeline.translate_pass import TranslateOptions, run_translate
 from tests.unit.support import SmartProvider
 
 runner = CliRunner()
@@ -104,5 +104,5 @@ def test_doctor_exits_zero_without_keys(
     payload = json.loads(result.stdout)
     assert payload["failed"] is False
     checks = {check["name"]: check for check in payload["checks"]}
-    assert checks["package"]["detail"].startswith("tarjoman 1.0.0")
+    assert checks["package"]["detail"].startswith("shahrzad 1.0.0")
     assert checks["books_dir"]["status"] == "ok"

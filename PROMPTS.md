@@ -1,8 +1,8 @@
-# Tarjoman — Prompt Library
+# Shahrzad — Prompt Library
 
 Version-controlled prompts for every agent. **Implementer rules:**
 
-1. Copy each prompt into `src/tarjoman/prompts/<id>.md` **verbatim**, including the YAML front-matter.
+1. Copy each prompt into `src/shahrzad/prompts/<id>.md` **verbatim**, including the YAML front-matter.
 2. Render with Jinja2 (`StrictUndefined`, no autoescape) using only the variables declared in each prompt's `Variables` section.
 3. The rendered string's SHA-256 + `version` is the `prompt_hash` used in the LLM cache key and `llm_calls`.
 4. Never edit a prompt in place without bumping `version` — that silently mixes cache entries.
@@ -939,7 +939,7 @@ The back-translation is compared to the original source by a judge call asking "
 
 1. Bump `version` in the front-matter and update `PROMPT_VERSIONS` in `agents/base.py`.
 2. Run the offline tests (`pytest tests/unit/test_prompts.py` — renders every prompt with fixture data, asserts schema fields and no missing variables).
-3. Run `tj eval judge --golden bench` (online) and put the before/after table in `DECISIONS.md`.
+3. Run `shz eval judge --golden bench` (online) and put the before/after table in `DECISIONS.md`.
 4. Only then run a full book; existing translations are not invalidated, but re-runs use the new prompt hash (cache miss, expected).
 
 **Why the prompts look like this** (for the implementer, so you do not "simplify" them): the dual-critic split, the anti-translationese list, the "do not churn" instructions, and the quoted-evidence requirement all come from documented failure modes — omission persists in document-level MT (Karpinska & Iyyer), prompt-only style control does not change register (Persian literary study), glossary compliance is probabilistic without an explicit unmet-constraint feedback loop (Translate-and-Revise, +15%), and multi-pass editorial structure is preferred by readers even when reference metrics dislike it (TransAgents). Removing those parts is a regression, not a simplification.

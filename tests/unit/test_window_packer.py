@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tarjoman.agents.translator import Translator
-from tarjoman.context.glossary_match import match_terms
-from tarjoman.context.packer import PackState, build_pack, segment_markup
-from tarjoman.core.cost import load_model_profile
-from tarjoman.core.db import Database
-from tarjoman.llm.provider import LLMResult
-from tarjoman.persian.lint import GlossaryTerm
-from tarjoman.pipeline.window import plan_hash, plan_windows
+from shahrzad.agents.translator import Translator
+from shahrzad.context.glossary_match import match_terms
+from shahrzad.context.packer import PackState, build_pack, segment_markup
+from shahrzad.core.cost import load_model_profile
+from shahrzad.core.db import Database
+from shahrzad.llm.provider import LLMResult
+from shahrzad.persian.lint import GlossaryTerm
+from shahrzad.pipeline.window import plan_hash, plan_windows
 
 from .support import SmartProvider, make_workspace
 
@@ -155,7 +155,7 @@ def test_translator_retries_broken_markup(
     assert segment is not None
     translator = Translator()
     provider = _BrokenThenValid(str(segment["id"]))
-    from tarjoman.context.packer import PackState, build_pack
+    from shahrzad.context.packer import PackState, build_pack
 
     variables = build_pack(
         window_segments=[segment], todo_segments=[segment], state=PackState()

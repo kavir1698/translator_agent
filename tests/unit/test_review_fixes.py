@@ -8,19 +8,19 @@ import pytest
 from lxml import html as lxml_html
 from typer.testing import CliRunner
 
-from tarjoman.cli.main import app
-from tarjoman.core.config import api_key_for, load_settings
-from tarjoman.core.db import Database
-from tarjoman.core.errors import ConfigError
-from tarjoman.core.paths import find_book_dir
-from tarjoman.ingest.blocks import make_block
-from tarjoman.ingest.chapterize import chapterize
-from tarjoman.ingest.inline import extract_nodes, render_with_sentinels
-from tarjoman.ingest.normalize_source import normalize_source
-from tarjoman.ingest.reader import read_source
-from tarjoman.persian.lint import LintIssue, LintSegment, LintTranslation, check_segment
-from tarjoman.persian.markup import normalize_translation, rebuilt_html, strip_markup
-from tarjoman.pipeline.init_pass import init_book
+from shahrzad.cli.main import app
+from shahrzad.core.config import api_key_for, load_settings
+from shahrzad.core.db import Database
+from shahrzad.core.errors import ConfigError
+from shahrzad.core.paths import find_book_dir
+from shahrzad.ingest.blocks import make_block
+from shahrzad.ingest.chapterize import chapterize
+from shahrzad.ingest.inline import extract_nodes, render_with_sentinels
+from shahrzad.ingest.normalize_source import normalize_source
+from shahrzad.ingest.reader import read_source
+from shahrzad.persian.lint import LintIssue, LintSegment, LintTranslation, check_segment
+from shahrzad.persian.markup import normalize_translation, rebuilt_html, strip_markup
+from shahrzad.pipeline.init_pass import init_book
 from tests.fixtures.build import SAMPLE_PARAGRAPHS
 
 runner = CliRunner()
@@ -46,7 +46,7 @@ def test_force_same_source_archives_and_rebuilds(isolated_home: Path, fixtures: 
 
 
 def test_env_off_is_a_string(repo_root: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("TARJOMAN_GLOSSARY__MODE", "off")
+    monkeypatch.setenv("SHAHRZAD_GLOSSARY__MODE", "off")
     settings = load_settings(root=repo_root)
     assert settings.glossary.mode == "off"
 
@@ -116,7 +116,7 @@ def test_tiny_chapter_merges_forward(isolated_home: Path, fixtures: dict[str, Pa
         ]
         return lxml_html.fragment_fromstring("".join(fragments), create_parent="div")
 
-    from tarjoman.ingest.types import Document, IngestResult
+    from shahrzad.ingest.types import Document, IngestResult
 
     wrapper = doc()
     blocks = [make_block(child) for child in wrapper]
@@ -181,7 +181,7 @@ def test_cache_get_does_not_write():
 
 
 def test_markdown_links_are_escaped_and_scheme_checked():
-    from tarjoman.ingest.txt_reader import md_inline
+    from shahrzad.ingest.txt_reader import md_inline
 
     assert md_inline("[x](javascript:evil)") == "x"
     rendered = md_inline('[x](http://example.com/" onmouseover="evil)')
