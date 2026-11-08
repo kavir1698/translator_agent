@@ -21,6 +21,92 @@ Not supported in v1: scanned PDFs/OCR, DRM-protected files, print-ready/typeset 
 
 > **Status of this build:** v1.0.0 is verified offline (mock provider, synthetic fixtures). No real-provider run and no public-domain-novella run was performed in this environment; the manual real-provider step is documented below and has not been executed here.
 
+## How it works
+
+Tarjoman is a deterministic, resumable pipeline, not a free-roaming agent loop. The processing commands run a fixed sequence of passes over a SQLite database, and every LLM call is schema-validated, cached, attributed and costed. The frozen specification is in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3.4 and §6.3–§6.7; this section is the working summary.
+
+### Pipeline at a glance
+
+```mermaid
+flowchart LR
+    A[tj init<br/>extract · chapterize · segment] --> B[tj analyze (optional)<br/>brief · summaries · entities · glossary]
+    A --> C[tj translate<br/>windows · draft · critique · revise · repair]
+    B --> C
+    C --> D[tj audit<br/>deterministic audit · sampled consistency · read-through]
+    D --> E[tj review (optional)<br/>human edits]
+    E --> F[tj export<br/>EPUB · DOCX · MD · TXT]
+    D --> F
+```
+
+| Stage | What it does | LLM calls |
+|---|---|---|
+| `tj init` | Extracts the source, chapterizes it, splits paragraphs into stable-ID segments, records inline markup and token estimates, and writes `book.db`. PDFs also get an import-quality score. | None |
+| `tj analyze` (optional) | Builds the book brief, chapter summaries, entity list and optional glossary candidates. Without an approved brief, translation uses conservative built-in defaults and marks the run `experimental`. | A1–A4 |
+| `tj translate` | Plans windows, assembles a context pack per window, then drafts, critiques, revises, repairs and lints. Also curates the story ledger at chapter close. | A5–A9 |
+| `tj audit` | Runs the deterministic glossary/name audit, samples windows for the consistency auditor, reads each Persian chapter without the source, and repairs targeted audit errors. | A10–A11, A8 for repairs |
+| `tj review` (optional) | Builds a self-contained HTML report of flagged segments; applying corrections stores them as human versions and re-runs QA. | None |
+| `tj export` | Read-only transform of the database into EPUB 3 RTL, DOCX RTL, Markdown and plain text (plus optional bilingual HTML and PDF), with internal validation. | None |
+
+### Units: segments and windows
+
+The paragraph is the unit of translation; a **segment** is a paragraph, heading, verse stanza, table row or footnote text. Stable IDs (`c003.s0042`) keep source and translation aligned and make every pass resumable.
+
+A **window** is the deterministic chunk an LLM call sees (the code's term for a "chunk"):
+
+- up to **8 segments** and **900 source tokens** by default (`pipeline.window.max_paragraphs`, `max_source_tokens`);
+- a segment is never split across windows; a single oversized segment becomes its own window;
+- a chapter's first heading travels with at least one following block;
+- adjacent dialogue paragraphs are kept together when the budget allows;
+- each window carries the previous **2** segments (source **and** finished Persian) as context only — the overlap is never retranslated.
+
+Windows are planned in reading order and hashed. Within a chapter they run **strictly sequentially**, because each window's context includes the previous window's output; chapters can be parallelized with `--parallel-chapters`. The plan is stored in the run manifest, and a changed plan is rejected unless you pass `tj translate --replan`.
+
+### The translation loop (per window)
+
+```text
+build context pack
+  → A5 draft
+  → A6 fidelity critic  +  A7 literary editor
+  → A8 revise (quoted issues only, ≤ 1 round)
+  → deterministic repair (lint errors only, ≤ 2 rounds)
+  → segment + window lint, risk score, status update
+  → next window
+```
+
+1. **Context pack.** A stable prefix (system rules, brief card, approved glossary, voice anchors) plus volatile context (chapter summary, rolling chapter summary, relevant ledger entries, previous two segments, the window source). The prefix is byte-stable so provider prompt caching can hit.
+2. **Draft.** A5 translates the window's pending segments in one structured `TranslatorOutput` response; segment IDs must match exactly, and missing IDs are re-requested rather than invented.
+3. **Review.** A6 (fidelity) and A7 (literary editor) each run **once per window** and return per-segment, quoted findings. This is the same chunk boundary as the draft, so review does not happen per chapter or per paragraph.
+4. **Revise.** A8 applies only concrete, verified findings, once per window by default (`critics.max_revision_rounds: 1`). A regression guard rejects a revision that introduces markup damage, empty text, new lint errors or a length outlier, keeping the draft.
+5. **Repair.** Deterministic lint errors trigger up to two targeted A8 repair rounds per window, covering only the failing segments.
+6. **Check.** Segment- and window-scope linters run, issues are deduplicated, a risk score is computed, and each segment moves from `drafted` to `done` when clean, or to `flagged`/`failed` when it needs attention. A revision or repair adds a new version without discarding the history.
+
+`economy` mode skips A7 and runs A6 only when a length error (`L08`) is present; `standard` runs both critics; `quality` moves A6/A7/A8 to the quality model tier. Every pass is a fresh request — context is rebuilt from the database, never carried as conversation history — so a window can be retried or resumed without cross-contamination.
+
+### Continuity between windows and chapters
+
+- **Brief** — frozen voice, register, address and footnote policy (A1).
+- **Glossary** — approved terms are injected into the pack; when off, a deterministic proper-noun list is used instead.
+- **Chapter summary** — English summary of the chapter (A2).
+- **Rolling summary** — the last few Persian sentences of the chapter, refreshed periodically.
+- **Ledger** — characters, terms, decisions and open questions; A9 curates it at chapter close and the packer injects only the slice relevant to the current window. Ledger chaining is disabled in `--parallel-chapters` mode, where continuity relies on the precomputed summaries instead.
+- **Anchors** — optional approved source/Persian voice pairs from chapter 1.
+
+After a chapter, L15 compares its Persian style metrics (segment length, dialogue ratio, unique-word ratio) with the book's running baseline and warns on style drift.
+
+### Translation review vs. audit review
+
+These are deliberately different scopes:
+
+- **Inside `tj translate`, reviewing and revising are per window** — A6, A7 and A8 see one window at a time, with the same overlap and context pack as the draft.
+- **`tj audit` is chapter/book scoped.** A10 samples up to `--sample N` windows per chapter (default 3) for consistency findings; A11 receives the **entire Persian chapter** with no source to catch translationese and rhythm problems; deterministic audits scan every segment; audit repairs are per segment.
+- **`tj review` is per flagged segment.** A human edits individual segments in `review/report.html`; `tj review apply` inserts a `pass=human` version and re-runs the linters.
+
+### State, resumability and determinism
+
+`book.db` is the source of truth: chapters, segments, append-only translation versions (draft, revision, repair, human), open issues, glossary, ledger, run statistics and the response cache. Re-running an unchanged window reuses cached responses and creates no new versions. Every call records model, prompt hash, tokens, cost and latency, so a run can pause at the budget cap and resume exactly where it stopped. In sequential mode, the same database, artifacts and config produce the same window plan, cache keys and exports.
+
+For the exhaustive specification — context-pack budgets, linter catalogue, severity policy, state machines and export rules — see [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) and [`SCHEMAS.md`](SCHEMAS.md).
+
 ## Requirements
 
 - **Python 3.12** and [`uv`](https://docs.astral.sh/uv/).
