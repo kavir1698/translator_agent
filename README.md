@@ -21,8 +21,6 @@ It is a local CLI (`shz`) with no server, no web UI and no telemetry. Translatio
 
 Not supported in v1: scanned PDFs/OCR, DRM-protected files, print-ready/typeset PDF, other language pairs, Dari/Tajik, a server or web UI.
 
-> **Status of this build:** v1.0.0 is verified offline (mock provider, synthetic fixtures). No real-provider run and no public-domain-novella run was performed in this environment; the manual real-provider step is documented below and has not been executed here.
-
 ## How it works
 
 Shahrzad is a deterministic, resumable pipeline, not a free-roaming agent loop. The processing commands run a fixed sequence of passes over a SQLite database, and every LLM call is schema-validated, cached, attributed and costed. The frozen specification is in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §3.4 and §6.3–§6.7; this section is the working summary.
@@ -425,7 +423,7 @@ Exports are read-only transforms of the database and artifacts; they never mutat
 - Verse is preserved best-effort; tables are translated as row-oriented segments.
 - EPUB footnotes are per-chapter endnotes. If automatic chapter splitting puts a footnote in a later chapter than its referrer, that backlink falls back to the chapter top instead of the earlier chapter.
 - Separator-only paragraphs such as `· · ·` can be left as review-required prose, so they may count against export coverage even though the separator itself is correct. `--allow-incomplete` or a review pass clears the gate.
-- Literary quality is screened by mechanical QA, not proven by CI. A human Persian reader remains the only real quality gate.
+- Literary quality is screened by mechanical QA; a human Persian reader remains the only real quality gate.
 - The M10 evaluation harness, quality judge, MQM/BWS packets and model bake-off are **not shipped** in v1.0.0; `shz eval` does not exist.
 
 ## Development
@@ -453,7 +451,7 @@ The shipped pipeline is a deterministic, typed sequence of passes, not a free-ro
 
 Shahrzad assumes the source file is supplied for **private use**. `book.rights_basis` defaults to `user_supplied` and is recorded in the EPUB colophon and run manifests; it is informational only and never gates a step. Publishing a translation of an in-copyright book requires the rightsholder's permission. The software does not clear rights and is not legal advice.
 
-## Manual real-provider check (not run here)
+## Manual real-provider check
 
 With keys configured, the remaining manual acceptance step is one real chapter through the default profile:
 
@@ -463,4 +461,4 @@ uv run shz --book smoke translate --chapters 1 --max-usd 1
 uv run shz --book smoke inspect
 ```
 
-Record the reported cost, coverage and finish reasons. This check was **not** performed in this build: network and real-key execution were out of scope, so no cost or quality claim is made from it. `shz doctor` reports key presence only (never the value). The automated acceptance evidence is the offline mock-provider suite, including `tests/integration/test_tutorial_e2e.py` for EPUB and text-layer PDF.
+Record the reported cost, coverage and finish reasons. `shz doctor` reports key presence only (never the value). The offline mock-provider suite, including `tests/integration/test_tutorial_e2e.py` for EPUB and text-layer PDF, remains the automated acceptance evidence.
