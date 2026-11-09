@@ -50,6 +50,8 @@ _ACTIVE = re.compile(
 )
 _A_TAG = re.compile(r"<a\b[^>]*>", re.IGNORECASE)
 _HREF = re.compile(r'\bhref="(#[^"]+)"', re.IGNORECASE)
+_ID_ATTR = re.compile(r'\sid="([^"]*)"', re.IGNORECASE)
+_INTERNAL_HREF = re.compile(r'href="#([^"]*)"', re.IGNORECASE)
 _LOGGER = get_logger("export.epub")
 
 
@@ -74,7 +76,14 @@ def _chapter_file(idx: int) -> str:
     return f"text/chapter-{idx:03d}.xhtml"
 
 
-def _add_noteref_ids(body: str, seen: set[str]) -> str:
+def _add_noteref_ids(body: str, seen: dict[str, str]) -> str:
+    """Give each noteref a stable local id and map footnote id -> referrer id.
+
+    Source EPUBs usually already give the referrer anchor an id (for example
+    ``_footnote_referrer_...``). Appending a second ``id`` made the XHTML
+    ill-formed, so keep the existing one and remember it for the backlink.
+    """
+
     def replace(match: re.Match[str]) -> str:
         tag = match.group(0)
         if "noteref" not in tag:
@@ -85,10 +94,34 @@ def _add_noteref_ids(body: str, seen: set[str]) -> str:
         target = href.group(1)[1:]
         if not target or target in seen:
             return tag
-        seen.add(target)
-        return tag[:-1] + f' id="noteref-{_attr_escape(target)}">'
+        existing = _ID_ATTR.search(tag)
+        if existing:
+            seen[target] = existing.group(1)
+            return tag
+        anchor = f"noteref-{target}"
+        seen[target] = anchor
+        return tag[:-1] + f' id="{_attr_escape(anchor)}">'
 
     return _A_TAG.sub(replace, body)
+
+
+def _fix_dangling_internal_hrefs(fragment: str) -> str:
+    """Point same-document links that have no local target at the chapter top.
+
+    A footnote can live in a chapter after the chapter that holds its referrer
+    (for example when one source document is split into several chapters).
+    The reference validator requires every ``href="#..."`` to resolve locally.
+    """
+
+    ids = set(re.findall(r'\bid="([^"]+)"', fragment))
+
+    def replace(match: re.Match[str]) -> str:
+        target = match.group(1)
+        if target == "chapter-top" or target in ids:
+            return match.group(0)
+        return 'href="#chapter-top"'
+
+    return _INTERNAL_HREF.sub(replace, fragment)
 
 
 def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
@@ -108,7 +141,7 @@ def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
         if rendered:
             parts.append(rendered)
 
-    seen: set[str] = set()
+    seen: dict[str, str] = {}
     body = _add_noteref_ids("\n".join(parts), seen)
 
     footnotes = [segment for segment in chapter.segments if segment.kind == "footnote"]
@@ -121,7 +154,7 @@ def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
                 anchor = f"{anchor}-2"
             used.add(anchor)
             text = segment_body(segment, assets) or "&#160;"
-            target = f"#noteref-{anchor}" if anchor in seen else "#chapter-top"
+            target = f"#{seen[anchor]}" if anchor in seen else "#chapter-top"
             items.append(
                 f'<li id="{_attr_escape(anchor)}" epub:type="endnote" role="doc-endnote">'
                 f'<p>{text} <a class="backlink" href="{_attr_escape(target)}" '
@@ -133,7 +166,7 @@ def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
             + "\n".join(items)
             + "\n</ol>\n</section>"
         )
-    return body
+    return _fix_dangling_internal_hrefs(body)
 
 
 def _manifest(
