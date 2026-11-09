@@ -182,6 +182,26 @@ def test_markup_normalizes_text_runs_only():
     assert normalize_markup("⟨1⟩كتاب⟨/1⟩") == "⟨1⟩کتاب⟨/1⟩"
 
 
+def test_normalize_markup_preserves_space_before_sentinel():
+    markup = "⟨1⟩بلکه ⟨/1⟩⟨2⟩پرواز⟨/2⟩"
+    assert normalize_markup(markup) == markup
+    assert normalize_markup("⟨1⟩بلکه⟨/1⟩⟨2⟩پرواز⟨/2⟩") == "⟨1⟩بلکه⟨/1⟩⟨2⟩پرواز⟨/2⟩"
+
+
+def test_normalize_translation_restores_inline_boundary_spaces():
+    nodes, _ = _nodes(
+        "<p><span>but <em>flying</em> or in this <em>corridor,</em> yes</span></p>"
+    )
+    raw = (
+        "⟨1⟩... بلکه⟨/1⟩⟨2⟩پرواز⟨/2⟩⟨3⟩ می‌کردند و در این⟨/3⟩"
+        "⟨4⟩راهرو،⟨/4⟩⟨5⟩ بله⟨/5⟩"
+    )
+    result = normalize_translation(raw, nodes)
+    assert result.problems == []
+    assert "بلکه پرواز" in result.fa_text
+    assert "این راهرو،" in result.fa_text
+
+
 def test_rebuilt_html_keeps_markup():
     nodes, _ = _nodes("<p>He was <em>very</em> angry.</p>")
     markup = render_with_sentinels(nodes)

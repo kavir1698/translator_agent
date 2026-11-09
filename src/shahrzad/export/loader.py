@@ -13,6 +13,7 @@ from shahrzad.core.db import Database
 from shahrzad.core.errors import ConfigError, IncompleteError
 from shahrzad.core.ids import utc_now_iso
 from shahrzad.core.paths import find_book_dir
+from shahrzad.persian.markup import restore_boundary_spaces, strip_markup
 
 from .models import ExportBook, ExportChapter, ExportSegment
 
@@ -121,15 +122,22 @@ def _resolve_source_path(base: Path, raw: str) -> Path:
 def _load_segment(
     row: Any, translation: Any, issues: list[Any]
 ) -> ExportSegment:
+    nodes = _nodes(row["nodes_json"])
+    fa_markup = str(translation["fa_markup"]) if translation is not None else ""
+    if fa_markup:
+        fa_markup = restore_boundary_spaces(fa_markup, nodes)
+        fa_text = strip_markup(fa_markup, nodes)
+    else:
+        fa_text = str(translation["fa_text"]) if translation is not None else ""
     return ExportSegment(
         id=str(row["id"]),
         idx=int(row["idx"]),
         kind=str(row["kind"]),
         source_text=str(row["source_text"]),
         source_html=str(row["source_html"]),
-        nodes=_nodes(row["nodes_json"]),
-        fa_text=str(translation["fa_text"]) if translation is not None else "",
-        fa_markup=str(translation["fa_markup"]) if translation is not None else "",
+        nodes=nodes,
+        fa_text=fa_text,
+        fa_markup=fa_markup,
         notes=_json_dict(translation["notes_json"]) if translation is not None else {},
         issues=[_issue_dict(item) for item in issues],
     )

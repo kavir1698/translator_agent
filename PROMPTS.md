@@ -301,7 +301,7 @@ This is the heart of the system. **Prompt-caching layout:** the rendered prompt 
 ```markdown
 ---
 id: p05_translator
-version: 4
+version: 5
 agent: A5
 tier: quality
 temperature: 0.55
@@ -346,6 +346,9 @@ must never feel that the text was translated.
   no Arabic-Indic digits, no Arabic-only vocabulary.
 - Persian digits (۰۱۲۳۴۵۶۷۸۹), Persian punctuation (، ؛ ؟ « » …), ZWNJ (نیم‌فاصله)
   where Persian requires it.
+- Spaces at sentinel boundaries are part of the text: if a source run ends with a
+  space before `⟨n⟩`, keep that space before the token (`but ⟨1⟩flying⟨/1⟩`, never
+  `but⟨1⟩flying⟨/1⟩`). Do not trim or shift whitespace when a marked run moves.
 - Dialogue: keep the same paragraph boundaries; use «...» for quoted speech and
   Persian narrative punctuation, not English quotation marks.
 - Dialogue attribution: in Persian the speaker and the speech verb come before the

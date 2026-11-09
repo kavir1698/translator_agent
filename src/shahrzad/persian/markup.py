@@ -105,6 +105,35 @@ def is_valid(markup: str, nodes: list[dict[str, Any]]) -> bool:
     return not validate_markup(markup, nodes)
 
 
+def _normalize_run(
+    text: str,
+    *,
+    preserve_trailing: bool,
+    digits: str,
+    keep_diacritics: bool,
+    ellipsis: str,
+    convert_number_separators: bool,
+) -> str:
+    value = normalize_fa(
+        text,
+        digits=digits,
+        keep_diacritics=keep_diacritics,
+        ellipsis=ellipsis,
+        convert_number_separators=convert_number_separators,
+        strip_edges=False,
+    )
+    # A run boundary is not a line edge: a space before a sentinel separates two
+    # words in the rebuilt text, so normalization must not trim it.
+    if (
+        preserve_trailing
+        and text
+        and text[-1] in " \t"
+        and not value.endswith((" ", "\t", "\n"))
+    ):
+        value += " "
+    return value
+
+
 def normalize_markup(
     markup: str,
     *,
@@ -119,27 +148,81 @@ def normalize_markup(
     for match in _TOKEN.finditer(markup):
         run = markup[position : match.start()]
         parts.append(
-            normalize_fa(
+            _normalize_run(
                 run,
+                preserve_trailing=True,
                 digits=digits,
                 keep_diacritics=keep_diacritics,
                 ellipsis=ellipsis,
                 convert_number_separators=convert_number_separators,
-                strip_edges=False,
             )
         )
         parts.append(match.group(0))
         position = match.end()
     parts.append(
-        normalize_fa(
+        _normalize_run(
             markup[position:],
+            preserve_trailing=False,
             digits=digits,
             keep_diacritics=keep_diacritics,
             ellipsis=ellipsis,
             convert_number_separators=convert_number_separators,
-            strip_edges=False,
         )
     )
+    return "".join(parts)
+
+
+def restore_boundary_spaces(markup: str, nodes: list[dict[str, Any]]) -> str:
+    """Reinsert spaces the model dropped at a text/sentinel boundary.
+
+    Only marked text nodes carry this information in the source. The repair is
+    deliberately limited to word/sentinel adjacencies so it cannot add a space
+    before punctuation or at the end of a segment.
+    """
+    edges: dict[int, tuple[bool, bool]] = {}
+    for node in nodes:
+        if node.get("kind") != "text" or not node.get("path"):
+            continue
+        text = str(node.get("text", ""))
+        if text:
+            edges[int(node["id"])] = (text[0].isspace(), text[-1].isspace())
+    if not edges:
+        return markup
+
+    opens: dict[int, list[re.Match[str]]] = {}
+    closes: dict[int, list[re.Match[str]]] = {}
+    for match in _TOKEN.finditer(markup):
+        bucket = closes if _token_kind(match.group(0)) == "close" else opens
+        bucket.setdefault(_token_id(match.group(0)), []).append(match)
+
+    insert_at: set[int] = set()
+    for node_id, (leading, trailing) in edges.items():
+        node_opens = opens.get(node_id, [])
+        node_closes = closes.get(node_id, [])
+        if not node_opens or not node_closes:
+            continue
+        start = node_opens[0].end()
+        end = node_closes[-1].start()
+        inner = markup[start:end]
+        if leading and inner and not inner[0].isspace():
+            before = markup[node_opens[0].start() - 1] if node_opens[0].start() else ""
+            if before and (before.isalnum() or before == "⟩"):
+                insert_at.add(node_opens[0].start())
+        if trailing and inner and not inner[-1].isspace():
+            after_index = node_closes[-1].end()
+            after = markup[after_index] if after_index < len(markup) else ""
+            if after and (after.isalnum() or after == "⟨"):
+                insert_at.add(after_index)
+
+    if not insert_at:
+        return markup
+    parts: list[str] = []
+    position = 0
+    for index in sorted(insert_at):
+        parts.append(markup[position:index])
+        parts.append(" ")
+        position = index
+    parts.append(markup[position:])
     return "".join(parts)
 
 
@@ -180,6 +263,7 @@ def normalize_translation(
     normalized = normalize_markup(
         markup, digits=digits, keep_diacritics=keep_diacritics, ellipsis=ellipsis
     )
+    normalized = restore_boundary_spaces(normalized, nodes)
     return NormalizedTranslation(
         fa_markup=normalized,
         fa_text=strip_markup(normalized, nodes),

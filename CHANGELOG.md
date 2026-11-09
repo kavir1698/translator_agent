@@ -19,6 +19,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   translator credit. `book.translator` defaults to empty; `--translator` still
   records an explicit human credit in the metadata.
 
+### Fixed
+
+- Inline emphasis no longer loses the space before the italic run: translator
+  sentinel-edge spaces are preserved, dropped boundary spaces are restored from
+  the source nodes, and export repairs existing stored translations.
+
 ### Added
 
 - **Live translation progress:** `shz translate` and `shz retranslate` render a
