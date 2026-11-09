@@ -28,7 +28,7 @@ from shahrzad.llm.schema import (
 def test_all_prompts_load(repo_root: Path):
     prompts = load_all(repo_root / "src" / "shahrzad" / "prompts")
     assert len(prompts) == 13
-    assert prompts["p05_translator"].version == 3
+    assert prompts["p05_translator"].version == 4
     assert prompts["p05_translator"].schema_name == "TranslatorOutput"
     assert prompts["p12_judge"].temperature == 0.2
 

@@ -301,7 +301,7 @@ This is the heart of the system. **Prompt-caching layout:** the rendered prompt 
 ```markdown
 ---
 id: p05_translator
-version: 3
+version: 4
 agent: A5
 tier: quality
 temperature: 0.55
@@ -348,6 +348,11 @@ must never feel that the text was translated.
   where Persian requires it.
 - Dialogue: keep the same paragraph boundaries; use «...» for quoted speech and
   Persian narrative punctuation, not English quotation marks.
+- Dialogue attribution: in Persian the speaker and the speech verb come before the
+  quotation: `بریگز پرسید: «چقدر؟»`. Never reproduce the English postposed tag
+  (`«چقدر؟» بریگز پرسید.`); move it before the quote and use a colon. For a
+  following unattributed reply line, start the paragraph with the Persian dialogue
+  dash: `— «...»`.
 - Verse: preserve line breaks and stanza structure; do not rhyme; prioritize image,
   rhythm and compression.
 
@@ -508,7 +513,7 @@ Return only the JSON object.
 ```markdown
 ---
 id: p07_literary_editor
-version: 3
+version: 4
 agent: A7
 tier: quality
 temperature: 0.35
@@ -545,8 +550,10 @@ Look for:
   clichés; register mismatches (bureaucratic, archaic, or suddenly colloquial)
 - translationese: literal syntax, noun piles, over-`که` relative chains, passive
   chains, particles that Persian would not use
-- dialogue: sounds written, not spoken; missing interruptions; address form
-  (تو/شما) inconsistent with the ledger
+- dialogue: English-style postposed attribution (`«چقدر؟» بریگز پرسید.`) instead of
+  Persian preposed `بریگز پرسید: «چقدر؟»`; unattributed reply lines missing the
+  `—` dialogue dash; sounds written, not spoken; missing interruptions; address
+  form (تو/شما) inconsistent with the ledger
 - imagery: a Persian metaphor that fights the source image, or an image that has
   become abstract
 - punctuation/pacing: dashes, ellipses, paragraph breaks that change the rhythm
@@ -786,7 +793,7 @@ changing) unless the text contradicts itself.
 ```markdown
 ---
 id: p11_readthrough
-version: 2
+version: 3
 agent: A11
 tier: quality
 temperature: 0.3
@@ -829,6 +836,9 @@ Return JSON:
 
 Rules:
 - No source comparison. No accuracy claims. No plot summary.
+- Check dialogue mechanics specifically: an attribution must precede its quote
+  (`X گفت: «...»`), and unattributed reply lines should carry the Persian `—`
+  dash. Report postposed English-style tags (`«...» X گفت`) as `dialogue`.
 - Be concrete: "این جمله سه بار «که» دارد و ریتم را می‌کشد" not "سبک ضعیف است".
 - If the chapter reads well, say so and return few or no issues. Do not manufacture
   problems to fill the quota.
@@ -847,7 +857,7 @@ The judge is **reference-free by design**: no human reference is shown, because 
 ```markdown
 ---
 id: p12_judge
-version: 2
+version: 3
 agent: A12
 tier: quality
 temperature: 0.2          # sampled 3× per item; temp 0 would make the 3 samples identical
@@ -896,6 +906,9 @@ Return JSON:
 }
 
 Rules:
+- Treat English-style dialogue mechanics (postposed `«...» X گفت`, missing
+  Persian dialogue dash on unattributed replies) as a `fluency` or `style` error,
+  not as a fidelity issue.
 - Do not reward literalness or closeness to the source wording; multiple renderings can be excellent.
 - Do not punish a legitimate adaptation that the brief allows.
 - "publishable" (5) means a good Iranian publisher would print it without editing.

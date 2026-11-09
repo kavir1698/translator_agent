@@ -8,6 +8,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Dialogue attribution now follows Persian order in the translator, literary
+  editor, read-through and judge prompts: `بریگز پرسید: «چقدر؟»`, never the
+  English postposed `«چقدر؟» بریگز پرسید.` Unattributed reply lines use the
+  Persian dialogue dash (`— «...»`). L14 also warns on postposed tags.
 - Renamed the project and Python package from Tarjoman to Shahrzad. The CLI is
   now `shz`; environment variables use the `SHAHRZAD_` prefix.
 - Exported books now end with the project URL

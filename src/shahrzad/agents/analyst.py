@@ -44,7 +44,10 @@ def default_brief() -> BookBrief:
         register_target_fa="literary-standard",
         address_policy="شما for strangers and elders, تو for intimates; otherwise follow the source",
         sentence_rhythm="preserve the source's sentence lengths, fragments and paragraph breaks",
-        dialogue_style="contemporary Persian dialogue in «...»; no regional slang",
+        dialogue_style=(
+            "contemporary Persian dialogue in «...» with the speaker and verb before the "
+            "quotation (X گفت: «...»), never the English postposed tag; no regional slang"
+        ),
         figurative_language="preserve images instead of explaining them",
         humor_irony="preserve dry understatement and irony without adding explanation",
         cultural_references_policy=(
@@ -61,7 +64,7 @@ def default_brief() -> BookBrief:
             "جمله‌ها را به همان کوتاهی و بلندی متن اصلی نگه دار.",
             "تصویرها و استعاره‌ها را ترجمه کن، نه توضیح.",
             "نام‌ها را با یک صورت‌نویسی ثابت فارسی بنویس.",
-            "گفت‌وگوها را با «...» و بدون افزودن توضیح بنویس.",
+            "گفت‌وگوها را با «...» و بدون افزودن توضیح بنویس؛ گوینده و فعل گفتن باید پیش از نقل قول بیاید («او گفت: ...»)، نه پس از آن.",
             "ابهام متن اصلی را حفظ کن.",
         ],
         dont_rules=[

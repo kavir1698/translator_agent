@@ -1,6 +1,6 @@
 ---
 id: p11_readthrough
-version: 2
+version: 3
 agent: A11
 tier: quality
 temperature: 0.3
@@ -43,6 +43,9 @@ Return JSON:
 
 Rules:
 - No source comparison. No accuracy claims. No plot summary.
+- Check dialogue mechanics specifically: an attribution must precede its quote
+  (`X گفت: «...»`), and unattributed reply lines should carry the Persian `—`
+  dash. Report postposed English-style tags (`«...» X گفت`) as `dialogue`.
 - Be concrete: "این جمله سه بار «که» دارد و ریتم را می‌کشد" not "سبک ضعیف است".
 - If the chapter reads well, say so and return few or no issues. Do not manufacture
   problems to fill the quota.

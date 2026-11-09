@@ -1,6 +1,6 @@
 ---
 id: p07_literary_editor
-version: 3
+version: 4
 agent: A7
 tier: quality
 temperature: 0.35
@@ -38,8 +38,10 @@ Look for:
   clichés; register mismatches (bureaucratic, archaic, or suddenly colloquial)
 - translationese: literal syntax, noun piles, over-`که` relative chains, passive
   chains, particles that Persian would not use
-- dialogue: sounds written, not spoken; missing interruptions; address form
-  (تو/شما) inconsistent with the ledger
+- dialogue: English-style postposed attribution (`«چقدر؟» بریگز پرسید.`) instead of
+  Persian preposed `بریگز پرسید: «چقدر؟»`; unattributed reply lines missing the
+  `—` dialogue dash; sounds written, not spoken; missing interruptions; address
+  form (تو/شما) inconsistent with the ledger
 - imagery: a Persian metaphor that fights the source image, or an image that has
   become abstract
 - punctuation/pacing: dashes, ellipses, paragraph breaks that change the rhythm

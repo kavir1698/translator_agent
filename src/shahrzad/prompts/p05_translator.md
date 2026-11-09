@@ -1,6 +1,6 @@
 ---
 id: p05_translator
-version: 3
+version: 4
 agent: A5
 tier: quality
 temperature: 0.55
@@ -47,6 +47,11 @@ must never feel that the text was translated.
   where Persian requires it.
 - Dialogue: keep the same paragraph boundaries; use «...» for quoted speech and
   Persian narrative punctuation, not English quotation marks.
+- Dialogue attribution: in Persian the speaker and the speech verb come before the
+  quotation: `بریگز پرسید: «چقدر؟»`. Never reproduce the English postposed tag
+  (`«چقدر؟» بریگز پرسید.`); move it before the quote and use a colon. For a
+  following unattributed reply line, start the paragraph with the Persian dialogue
+  dash: `— «...»`.
 - Verse: preserve line breaks and stanza structure; do not rhyme; prioritize image,
   rhythm and compression.
 

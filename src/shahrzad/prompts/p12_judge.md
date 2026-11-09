@@ -1,6 +1,6 @@
 ---
 id: p12_judge
-version: 2
+version: 3
 agent: A12
 tier: quality
 temperature: 0.2          # sampled 3× per item; temp 0 would make the 3 samples identical
@@ -49,6 +49,9 @@ Return JSON:
 }
 
 Rules:
+- Treat English-style dialogue mechanics (postposed `«...» X گفت`, missing
+  Persian dialogue dash on unattributed replies) as a `fluency` or `style` error,
+  not as a fidelity issue.
 - Do not reward literalness or closeness to the source wording; multiple renderings can be excellent.
 - Do not punish a legitimate adaptation that the brief allows.
 - "publishable" (5) means a good Iranian publisher would print it without editing.

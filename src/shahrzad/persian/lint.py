@@ -33,6 +33,12 @@ _PERSIAN_LETTER = re.compile(r"[\u0600-\u06FF\u200c]")
 _LATIN_RUN = re.compile(r"[A-Za-z][A-Za-z'’\-]*(?:\s+[A-Za-z][A-Za-z'’\-]*){3,}")
 _PERSIAN_WORD = re.compile(r"[\u0600-\u06FF\u200c]{2,}")
 _SENTENCE = re.compile(r"[^.!?…؛\n]+[.!?…؛]?")
+_POSTPOSED_DIALOGUE_TAG = re.compile(
+    r"»\s*(?:[^\s«»\n.!؟…؛،:]+\s+){0,4}"
+    r"(?:گفت|گفتند|پرسید|پرسیدند|پاسخ داد|جواب داد|زمزمه کرد|فریاد زد|"
+    r"نجوا کرد|افزود|ادامه داد|تکرار کرد|اعلام کرد|توضیح داد)"
+    r"\s*[.!؟…]?(?=\s|$)"
+)
 
 
 @dataclass(frozen=True)
@@ -376,6 +382,16 @@ def _check_l14(tr: LintTranslation) -> list[LintIssue]:
     mibashad = text.count("می‌باشد") + text.count("می باشد")
     if mibashad:
         issues.append(LintIssue("L14", Severity.WARN, "می‌باشد/می باشد is bureaucratic", quote="می‌باشد"))
+    postposed = _POSTPOSED_DIALOGUE_TAG.search(text)
+    if postposed:
+        issues.append(
+            LintIssue(
+                "L14",
+                Severity.WARN,
+                "postposed dialogue attribution; put the speaker and verb before the quote",
+                quote=postposed.group(0).strip()[:80],
+            )
+        )
     if words < 100:
         return issues
     passive = len(re.findall(r"گردید|گردند|گردد", text))

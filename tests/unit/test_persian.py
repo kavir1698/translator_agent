@@ -340,6 +340,14 @@ def test_l14_translationese():
     assert "L14" not in codes(check_segment(seg("hello"), tr("این خوب است")))
 
 
+def test_l14_flags_postposed_dialogue_attribution():
+    bad = check_segment(seg("How much?"), tr("«چقدر؟» بریگز پرسید."))
+    assert any(issue.code == "L14" and "postposed dialogue" in issue.message for issue in bad)
+    assert "L14" in codes(check_segment(seg("Anything?"), tr("«چی؟» پری به‌سختی گفت.")))
+    good = check_segment(seg("How much?"), tr("بریگز پرسید: «چقدر؟»"))
+    assert not any("postposed dialogue" in issue.message for issue in good)
+
+
 def test_l15_style_drift():
     chapter = LintChapter(
         idx=1,
