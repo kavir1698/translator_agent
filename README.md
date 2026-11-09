@@ -227,7 +227,9 @@ uv run shz --book my-book export --formats epub,docx --bilingual
 uv run shz --book my-book export --allow-incomplete   # deliberately skips the completeness gate
 ```
 
-Outputs land in `books/my-book/out/` as `<slug>.fa.epub`, `<slug>.fa.docx`, `<slug>.fa.md`, `<slug>.fa.txt`, plus `<slug>.fa.pdf` (`--pdf`) and `<slug>.bilingual.html` (`--bilingual`). The EPUB is validated internally on every export; external `epubcheck` runs only if installed. Every exported book ends with the project address, `https://github.com/kavir1698/translator_agent`; Shahrzad does not add an automatic "translated by" credit. Pass `--translator` only when a human translator should be credited in the metadata.
+Outputs land in `books/my-book/out/` as `<filename>.fa.epub`, `<filename>.fa.docx`, `<filename>.fa.md`, `<filename>.fa.txt`, plus `<filename>.fa.pdf` (`--pdf`) and `<filename>.bilingual.html` (`--bilingual`). `<filename>` is `export.filename`, defaulting to the workspace slug; set `book.title_fa` for the Persian metadata title and `export.filename` for a Latin transliteration of that title. The EPUB is validated internally on every export; external `epubcheck` runs only if installed. Every exported book ends with the project address, `https://github.com/kavir1698/translator_agent`; Shahrzad does not add an automatic "translated by" credit. Pass `--translator` only when a human translator should be credited in the metadata.
+
+Standalone separator paragraphs are preserved (for example `· · ·`); inline prose ellipses are normalized to `…` according to `persian.ellipsis`.
 
 EPUB export uses the source book's nav/NCX as the chapter structure. It merges continuation documents into one chapter, uses TOC labels for front matter, and regenerates the Contents page with valid internal links. If the source has no usable TOC it falls back to the stored chapter rows.
 
@@ -422,7 +424,7 @@ Exports are read-only transforms of the database and artifacts; they never mutat
 - No OCR and no scanned PDFs. Text-layer PDF import is best-effort and reports an import-quality score.
 - Verse is preserved best-effort; tables are translated as row-oriented segments.
 - EPUB footnotes are per-chapter endnotes. If automatic chapter splitting puts a footnote in a later chapter than its referrer, that backlink falls back to the chapter top instead of the earlier chapter.
-- Separator-only paragraphs such as `· · ·` can be left as review-required prose, so they count against export coverage even though their Persian text is correct. `--allow-incomplete` or a review pass clears the gate.
+- Separator-only paragraphs such as `· · ·` can be left as review-required prose, so they may count against export coverage even though the separator itself is correct. `--allow-incomplete` or a review pass clears the gate.
 - Literary quality is screened by mechanical QA, not proven by CI. A human Persian reader remains the only real quality gate.
 - The M10 evaluation harness, quality judge, MQM/BWS packets and model bake-off are **not shipped** in v1.0.0; `shz eval` does not exist.
 

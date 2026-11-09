@@ -111,20 +111,20 @@ def test_epub_structure_groups_continuations_and_moves_essay_after_story(
 
     exported, links, toc_idx, items = structure.build_export_structure(_book(chapters))
 
-    assert toc_idx == 4
+    assert toc_idx == 2
     assert [(chapter.idx, chapter.title_en) for chapter in exported] == [
-        (3, "Copyright"),
-        (4, "Contents"),
-        (5, "Epigraph"),
-        (6, "We Begin"),
-        (8, "IN THE CART"),
-        (7, 'THOUGHTS ON “IN THE CART”'),
-        (10, "AFTERTHOUGHT #1"),
+        (1, "Copyright"),
+        (2, "Contents"),
+        (3, "Epigraph"),
+        (4, "We Begin"),
+        (5, "IN THE CART"),
+        (6, 'THOUGHTS ON “IN THE CART”'),
+        (7, "AFTERTHOUGHT #1"),
     ]
     story = next(chapter for chapter in exported if chapter.title_en == "IN THE CART")
     assert len(story.segments) == 2  # chapter 8 + its continuation chapter 9
     assert all(chapter.title_en != "Chapter 9" for chapter in exported)
-    assert links["doc007.xhtml"] == "chapter-008.xhtml"
-    assert links["doc008.xhtml"] == "chapter-007.xhtml"
-    assert links["doc009.xhtml"] == "chapter-008.xhtml"
+    assert links["doc007.xhtml"] == "chapter-005.xhtml"
+    assert links["doc008.xhtml"] == "chapter-006.xhtml"
+    assert links["doc009.xhtml"] == "chapter-005.xhtml"
     assert [label for label, _ in items][-1] == "AFTERTHOUGHT #1"

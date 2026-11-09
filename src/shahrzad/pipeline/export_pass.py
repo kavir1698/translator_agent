@@ -100,9 +100,10 @@ def run_export(
             "Set book.title_fa in config.yaml for an all-Persian export."
         )
 
+    stem = (settings.export.filename or book.slug).strip() or book.slug
     paths: dict[str, Path] = {}
     for name in write_formats:
-        target = out / f"{book.slug}.fa.{name}"
+        target = out / f"{stem}.fa.{name}"
         if name == "epub":
             paths[name] = write_epub(book, target, settings, assets)
         elif name == "docx":
@@ -118,7 +119,7 @@ def run_export(
             paths["pdf"] = pdf.path
     if options.bilingual:
         paths["bilingual"] = write_bilingual_html(
-            book, out / f"{book.slug}.bilingual.html", settings
+            book, out / f"{stem}.bilingual.html", settings
         )
     if book.incomplete:
         if "epub" in paths:

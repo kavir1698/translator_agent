@@ -291,6 +291,14 @@ def build_export_structure(
     exported = [_build_chapter(group) for group in kept]
     if not exported:
         return book.chapters, {}, None, []
+    exported = [
+        replace(chapter, idx=position)
+        for position, chapter in enumerate(exported, start=1)
+    ]
+    target_by_group = {
+        id(group): chapter.idx
+        for group, chapter in zip(kept, exported, strict=True)
+    }
 
     toc_index = next(
         (
@@ -319,7 +327,7 @@ def build_export_structure(
             (group for group in kept if group.position >= entry.position),
             kept[-1],
         )
-        link_map[name] = f"chapter-{target_group.chapters[0].idx:03d}.xhtml"
+        link_map[name] = f"chapter-{target_by_group[id(target_group)]:03d}.xhtml"
 
     toc_items: list[tuple[str, str]] = []
     if toc_index is not None:

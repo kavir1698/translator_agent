@@ -144,6 +144,7 @@ class BilingualHtmlConfig(_Section):
 
 class ExportConfig(_Section):
     formats: list[str] = Field(default_factory=lambda: ["epub", "docx", "md", "txt"])
+    filename: str | None = None
     pdf: bool = False
     bilingual: bool = False
     epub: EpubExportConfig = Field(default_factory=EpubExportConfig)
