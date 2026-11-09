@@ -174,6 +174,7 @@ def _build_chapters(db: Database, book_id: int) -> tuple[list[ExportChapter], li
             kind=str(chapter["kind"]),
             title_en=str(chapter["title_en"]) if chapter["title_en"] else None,
             title_fa=str(chapter["title_fa"]) if chapter["title_fa"] else None,
+            source_doc=str(chapter["source_doc"]) if chapter["source_doc"] else None,
         )
         for row in by_chapter.get(int(chapter["id"]), []):
             if str(row["status"]) == "skipped":

@@ -229,6 +229,18 @@ uv run shz --book my-book export --allow-incomplete   # deliberately skips the c
 
 Outputs land in `books/my-book/out/` as `<slug>.fa.epub`, `<slug>.fa.docx`, `<slug>.fa.md`, `<slug>.fa.txt`, plus `<slug>.fa.pdf` (`--pdf`) and `<slug>.bilingual.html` (`--bilingual`). The EPUB is validated internally on every export; external `epubcheck` runs only if installed. Every exported book ends with the project address, `https://github.com/kavir1698/translator_agent`; Shahrzad does not add an automatic "translated by" credit. Pass `--translator` only when a human translator should be credited in the metadata.
 
+EPUB export uses the source book's nav/NCX as the chapter structure. It merges continuation documents into one chapter, uses TOC labels for front matter, and regenerates the Contents page with valid internal links. If the source has no usable TOC it falls back to the stored chapter rows.
+
+If the source TOC order itself is wrong, correct it with a per-book `artifacts/toc_order.yaml`; no content-specific rules are built into the program:
+
+```yaml
+moves:
+  - item: "Chapter to move"
+    after: "Chapter it should follow"
+```
+
+Titles are matched case- and punctuation-insensitively, and moves apply in order. Without this file, the source TOC order is preserved. This regrouping applies to the EPUB only; DOCX/Markdown/TXT keep the stored chapter order.
+
 ### 8. Quality gates, flagged segments and `--allow-incomplete`
 
 `shz export` is a hard gate. It requires:

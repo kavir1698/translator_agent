@@ -28,6 +28,7 @@ class ExportChapter:
     title_en: str | None
     title_fa: str | None
     segments: list[ExportSegment] = field(default_factory=list)
+    source_doc: str | None = None
 
 
 @dataclass

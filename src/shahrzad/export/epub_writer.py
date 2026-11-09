@@ -10,7 +10,8 @@ import shutil
 import subprocess
 import uuid
 import zipfile
-from pathlib import Path
+from dataclasses import replace
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
@@ -23,6 +24,7 @@ from shahrzad.core.logging import get_logger
 
 from .assets import ImageAsset, SourceAssets
 from .models import ExportBook, ExportChapter
+from .structure import build_export_structure
 from .xhtml import (
     chapter_title,
     footnote_id,
@@ -105,6 +107,27 @@ def _add_noteref_ids(body: str, seen: dict[str, str]) -> str:
     return _A_TAG.sub(replace, body)
 
 
+def _rewrite_source_links(fragment: str, link_map: dict[str, str]) -> str:
+    """Point links that name source XHTML files at the regrouped EPUB files."""
+    if not link_map:
+        return fragment
+
+    def replace_href(match: re.Match[str]) -> str:
+        value = match.group(1)
+        if value.startswith(
+            ("#", "http://", "https://", "mailto:", "data:", "tel:")
+        ):
+            return match.group(0)
+        base, separator, fragment_id = value.partition("#")
+        target = link_map.get(PurePosixPath(base.replace("\\", "/")).name)
+        if target is None:
+            return match.group(0)
+        suffix = f"#{fragment_id}" if separator else ""
+        return f'href="{_attr_escape(target)}{suffix}"'
+
+    return re.sub(r'href="([^"]+)"', replace_href, fragment)
+
+
 def _fix_dangling_internal_hrefs(fragment: str) -> str:
     """Point same-document links that have no local target at the chapter top.
 
@@ -124,8 +147,24 @@ def _fix_dangling_internal_hrefs(fragment: str) -> str:
     return _INTERNAL_HREF.sub(replace, fragment)
 
 
-def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
+def _chapter_body(
+    chapter: ExportChapter,
+    assets: SourceAssets,
+    *,
+    link_map: dict[str, str] | None = None,
+    toc_idx: int | None = None,
+    toc_items: list[tuple[str, str]] | None = None,
+) -> str:
     title = chapter_title(chapter)
+    if toc_idx is not None and chapter.idx == toc_idx and toc_items is not None:
+        entries = "\n".join(
+            f'<li><a href="{_attr_escape(href)}">{isolate_latin(label)}</a></li>'
+            for label, href in toc_items
+        )
+        return (
+            f'<h1 class="chapter-title">{isolate_latin(title)}</h1>\n'
+            f'<ul class="toc">\n{entries}\n</ul>'
+        )
     parts = [f'<h1 class="chapter-title">{isolate_latin(title)}</h1>']
     skipping_title = (
         bool(chapter.segments)
@@ -166,6 +205,7 @@ def _chapter_body(chapter: ExportChapter, assets: SourceAssets) -> str:
             + "\n".join(items)
             + "\n</ol>\n</section>"
         )
+    body = _rewrite_source_links(body, link_map or {})
     return _fix_dangling_internal_hrefs(body)
 
 
@@ -263,13 +303,26 @@ def _cover_page(book: ExportBook, cover: ImageAsset) -> str:
     )
 
 
-def _chapters(book: ExportBook, assets: SourceAssets) -> dict[str, bytes]:
+def _chapters(
+    book: ExportBook,
+    assets: SourceAssets,
+    *,
+    link_map: dict[str, str] | None = None,
+    toc_idx: int | None = None,
+    toc_items: list[tuple[str, str]] | None = None,
+) -> dict[str, bytes]:
     result: dict[str, bytes] = {}
     for chapter in book.chapters:
         result[f"OEBPS/{_chapter_file(chapter.idx)}"] = _render(
             "chapter.xhtml.j2",
             title=chapter_title(chapter),
-            body=_chapter_body(chapter, assets),
+            body=_chapter_body(
+                chapter,
+                assets,
+                link_map=link_map,
+                toc_idx=toc_idx,
+                toc_items=toc_items,
+            ),
         ).encode("utf-8")
     return result
 
@@ -310,8 +363,10 @@ def write_epub(
     book: ExportBook, path: Path, settings: Settings, assets: SourceAssets
 ) -> Path:
     """Write the EPUB and validate it internally (and with epubcheck when present)."""
-    include_incomplete = book.incomplete
-    manifest, spine = _manifest(book, assets, include_incomplete=include_incomplete)
+    chapters, link_map, toc_idx, toc_items = build_export_structure(book)
+    epub_book = replace(book, chapters=chapters) if chapters is not book.chapters else book
+    include_incomplete = epub_book.incomplete
+    manifest, spine = _manifest(epub_book, assets, include_incomplete=include_incomplete)
     opf = _render(
         "content.opf.j2",
         identifier=_identifier(book),
@@ -337,7 +392,7 @@ def write_epub(
 
     nav_items = [
         {"href": _chapter_file(chapter.idx), "title": chapter_title(chapter)}
-        for chapter in book.chapters
+        for chapter in epub_book.chapters
     ]
     entries: dict[str, bytes] = {
         "META-INF/container.xml": _render(
@@ -351,11 +406,19 @@ def write_epub(
         "OEBPS/fonts/OFL.txt": _read_asset("OFL.txt"),
     }
     if assets.cover is not None:
-        entries["OEBPS/text/cover.xhtml"] = _cover_page(book, assets.cover).encode("utf-8")
+        entries["OEBPS/text/cover.xhtml"] = _cover_page(epub_book, assets.cover).encode("utf-8")
         entries[f"OEBPS/images/{assets.cover.name}"] = assets.cover.data
     for image in assets.images:
         entries[f"OEBPS/images/{image.name}"] = image.data
-    entries.update(_chapters(book, assets))
+    entries.update(
+        _chapters(
+            epub_book,
+            assets,
+            link_map=link_map,
+            toc_idx=toc_idx,
+            toc_items=toc_items,
+        )
+    )
     if include_incomplete:
         entries["OEBPS/text/incomplete.xhtml"] = _render("incomplete.xhtml.j2").encode("utf-8")
     entries["OEBPS/text/colophon.xhtml"] = _render(
