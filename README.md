@@ -200,6 +200,8 @@ The audit runs sampled consistency checks, a deterministic glossary/name audit, 
 
 The report is under `books/my-book/runs/<run_id>/report.md`.
 
+The audit is diagnostic. It reports findings and applies only a limited set of targeted repairs; it does **not** approve chapters. A finished audit can still leave many open findings, and therefore the export gate closed.
+
 ### 6. Optional: human review
 
 ```bash
@@ -227,7 +229,24 @@ uv run shz --book my-book export --allow-incomplete   # deliberately skips the c
 
 Outputs land in `books/my-book/out/` as `<slug>.fa.epub`, `<slug>.fa.docx`, `<slug>.fa.md`, `<slug>.fa.txt`, plus `<slug>.fa.pdf` (`--pdf`) and `<slug>.bilingual.html` (`--bilingual`). The EPUB is validated internally on every export; external `epubcheck` runs only if installed. Every exported book ends with the project address, `https://github.com/kavir1698/translator_agent`; Shahrzad does not add an automatic "translated by" credit. Pass `--translator` only when a human translator should be credited in the metadata.
 
-### 8. Example: whole book in `quality` mode, workspace beside the source
+### 8. Quality gates, flagged segments and `--allow-incomplete`
+
+`shz export` is a hard gate. It requires:
+
+1. every body segment to be `done`, and
+2. zero open error/critical issues.
+
+`shz audit` is diagnostic: it can add findings faster than it repairs them, so a completed audit may still leave the gate closed (the run report shows `adherence`, `A10`/`A11` findings and `repairs`). Flagged segments, including separator-only paragraphs such as `· · ·`, count as incomplete even when they already have a Persian translation. The 100% minimum comes from `review.min_coverage_for_export`.
+
+To clear the gate:
+
+- `shz review build` then `shz review apply corrections.jsonl` — edit flagged segments, insert human corrections, and re-run QA.
+- `shz qa accept --issue <id> --note "..." --reviewer "<name>"` — waive a finding deliberately.
+- `shz export ... --allow-incomplete` — bypass both gates and write an edition marked incomplete (the EPUB gets a `TRANSLATION INCOMPLETE` page). This does **not** bypass the built-in EPUB validator; malformed XHTML, duplicate ids or dangling internal links still fail.
+
+The translation progress bar counts every window planned for the run. The run summary counts only windows that actually translated something, so the numbers can differ (for example `421/421` on the bar and `140 windows` in the summary). Re-running a paused run starts the bar at zero again; it does not restart the book.
+
+### 9. Example: whole book in `quality` mode, workspace beside the source
 
 `--cost-mode` overrides the auto-selected mode for that run: `economy` skips the literary editor, `standard` is the default, and `quality` reserves the configured quality tier for the critics and reviser (the shipped profile uses `gpt-6-luna` via OpenRouter, so `OPENROUTER_API_KEY` is required). Run `shz estimate` first; it prints all three modes at both tariffs.
 
@@ -376,7 +395,10 @@ Exports are read-only transforms of the database and artifacts; they never mutat
 | `epubcheck` not found | External validation is optional. The internal validator always runs and the export is still produced. Install Java + epubcheck to enable the external check. |
 | `soffice` not found / `--pdf` skipped | Install LibreOffice or run the printed manual `soffice --headless --convert-to pdf …` command. The result is readable but not print-ready. |
 | Run exits `3` (budget paused) | State is saved. Raise `budget.max_usd` or `--max-usd`, or pass `--allow-overrun`, then re-run the same command. |
-| Export blocks and exits `4` (incomplete) | Finish translation, resolve/waive open error issues (`shz qa`/`shz review`), or pass `--allow-incomplete` to write a marked incomplete edition. |
+| Export blocks and exits `4` (incomplete) | The gate needs every body segment `done` and zero open error/critical issues. Flagged segments (including `· · ·` separators) count as incomplete. Resolve or waive them with `shz review` / `shz qa accept`, or pass `--allow-incomplete` to write a marked incomplete edition. See section 8. |
+| Audit finished but export is still blocked | Expected: audit reports and partially repairs; it does not approve chapters. Read `runs/<run_id>/report.md`, apply corrections or waive findings, then export. `--allow-incomplete` bypasses the gate but keeps the notice. |
+| EPUB validation failed (duplicate id, not well-formed XML, dangling `href="#..."`) | The built-in validator runs on every export and is not bypassed by `--allow-incomplete`. Fix the reported chapter markup or the exporter, re-run, and inspect with `scripts/run_epubcheck.sh`. |
+| `WinError 5` renaming `ledger.jsonl.tmp` to `ledger.jsonl` | A Windows sync/antivirus lock on the workspace. The current build retries and records a warning instead of failing the chapter; if it persists, pause Koofr/antivirus or exclude `book/` during the run. |
 | `multiple book workspaces found` | Pass the global option before the command, e.g. `shz --book my-book translate`, or set one workspace per project root. |
 | Provider/network failure | Check the key and connectivity; the run is resumable and cached calls are not re-billed. |
 
@@ -387,6 +409,8 @@ Exports are read-only transforms of the database and artifacts; they never mutat
 - External `epubcheck` is optional; the built-in validator checks archive structure, manifest/spine, RTL language tags, links and active content.
 - No OCR and no scanned PDFs. Text-layer PDF import is best-effort and reports an import-quality score.
 - Verse is preserved best-effort; tables are translated as row-oriented segments.
+- EPUB footnotes are per-chapter endnotes. If automatic chapter splitting puts a footnote in a later chapter than its referrer, that backlink falls back to the chapter top instead of the earlier chapter.
+- Separator-only paragraphs such as `· · ·` can be left as review-required prose, so they count against export coverage even though their Persian text is correct. `--allow-incomplete` or a review pass clears the gate.
 - Literary quality is screened by mechanical QA, not proven by CI. A human Persian reader remains the only real quality gate.
 - The M10 evaluation harness, quality judge, MQM/BWS packets and model bake-off are **not shipped** in v1.0.0; `shz eval` does not exist.
 
