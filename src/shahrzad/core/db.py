@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .atomic import atomic_write_text
 from .errors import ConfigError, InvalidTransition, RuntimeFailure
 from .glossary import normalize_term_en
 from .ids import run_id as new_run_id
@@ -459,11 +460,10 @@ class Database:
                 "value": json.loads(row["value_json"] or "{}"),
                 "chapter": int(row["chapter_idx"]),
             }
-        temp = path.with_name(f"{path.name}.tmp")
-        with temp.open("w", encoding="utf-8") as handle:
-            for key in sorted(merged):
-                handle.write(json.dumps(merged[key], ensure_ascii=False) + "\n")
-        temp.replace(path)
+        lines = [
+            json.dumps(merged[key], ensure_ascii=False) + "\n" for key in sorted(merged)
+        ]
+        atomic_write_text(path, "".join(lines))
         return path
 
     # -------------------------------------------------------------- segments

@@ -753,7 +753,17 @@ def _apply_ledger(run: _Run, chapter: Any, update: LedgerUpdate) -> None:
             message=f"ledger correction suggested: {correction}",
             chapter_id=int(chapter["id"]),
         )
-    run.db.sync_ledger_artifact(run.base, run.book_id)
+    try:
+        run.db.sync_ledger_artifact(run.base, run.book_id)
+    except OSError as exc:
+        run.db.upsert_issue(
+            stage="translate",
+            code="LEDGER_SYNC_FAILED",
+            dedupe_key=f"ch:{chapter_idx}:LEDGER_SYNC_FAILED",
+            severity=Severity.WARN,
+            message=f"ledger artifact could not be written: {exc}",
+            chapter_id=int(chapter["id"]),
+        )
 
 
 def _window_lint(
